@@ -130,6 +130,19 @@ grep -q 'Super+Tab does not switch apps' docs/keybindings.md \
   || fail "cheat sheet should note Super+Tab does not switch apps"
 printf '%s\n' "$fed_plan" | grep -q 'Alt+Tab app switch (not Super+Tab)' \
   || fail "fedora plan should state Alt+Tab app switch, not Super+Tab"
+printf '%s\n' "$fed_plan" | grep -q 'Super tap opens Activities overview (not Vicinae)' \
+  || fail "fedora plan should state Super tap opens Activities, not Vicinae"
+grep -q "overlay-key 'Super_L'" scripts/gnome.sh \
+  || fail "GNOME overlay-key must be Super_L for Activities on Super tap"
+grep -q 'Windows / Android mode' docs/keybindings.md \
+  || fail "cheat sheet must recommend Keychron Win mode"
+grep -q 'Alt alone' docs/keybindings.md || fail "cheat sheet missing Alt alone = nothing"
+grep -q 'not the launcher' docs/keybindings.md \
+  || fail "cheat sheet must say Super tap is Overview, not the launcher"
+grep -qx '05ac:024f' dotfiles/keyd/default.conf \
+  || fail "keyd must explicitly list Inland MK Pro V2 Apple id 05ac:024f"
+grep -q '05ac:024f' docs/keybindings.md \
+  || fail "cheat sheet should document Inland MK Pro V2 keyd Apple id"
 grep -q 'backspace = macro(S-home, backspace)' dotfiles/keyd/default.conf || fail "Alt+Backspace is not delete-to-line-start"
 grep -q '\[opt\]' dotfiles/keyd/default.conf || fail "Option layer missing"
 grep -q 'left = C-left' dotfiles/keyd/default.conf || fail "Super+Left word jump missing"

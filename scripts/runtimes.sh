@@ -62,7 +62,7 @@ install_dx_cli() {
     return 0
   fi
   (
-    cd "$status_dir"
+    cd "$status_dir" || exit 1
     cargo install --path crates/status-cli --locked --force
   )
   have dx || die "cargo install finished but dx is not on PATH (expected ~/.cargo/bin)"

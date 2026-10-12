@@ -404,9 +404,12 @@ configure_force_quit() {
 # Physical Alt = Command, Super = Option. keyd emits Super/Alt chords GNOME hears.
 configure_macos_hotkeys() {
   if [[ "$DRY_RUN" == "1" ]]; then
-    log "would mirror macOS hotkeys (Alt=Command, Super=Option): Alt+Tab app switch (not Super+Tab), Alt+\` same-app windows, Super+M/H minimize, Shift+Super+3/4/5 screenshots, Super+L lock"
+    log "would mirror macOS hotkeys (Alt=Command, Super=Option): Super tap opens Activities overview (not Vicinae), Alt alone is noop, Alt+Tab app switch (not Super+Tab), Alt+Space launcher, Alt+\` same-app windows, Super+M/H minimize, Shift+Super+3/4/5 screenshots, Super+L lock"
     return 0
   fi
+  # Activities/Overview (Mission Control-like): Super tap only — never the launcher.
+  # Vicinae is Alt+Space → Super+Space (custom keybinding), not overlay-key.
+  gset org.gnome.mutter overlay-key 'Super_L'
   # Cmd+Tab → keyd emits Alt+Tab and keeps Alt held while Tab cycles.
   # Schema default is ['<Super>Tab','<Alt>Tab']; keep only Alt+Tab so Super+Tab
   # does not steal app switching (keyd also noops Super+Tab on the Option layer).
@@ -429,7 +432,7 @@ configure_macos_hotkeys() {
   gset org.gnome.shell.keybindings screenshot-window "['<Alt>Print']"
   # Ctrl+Cmd+Q → keyd emits Super+L.
   gset org.gnome.settings-daemon.plugins.media-keys screensaver "['<Super>l']"
-  # Overview stays a Super tap. Clear Super+A show-apps so it cannot fight Select All.
+  # Clear Super+A show-apps so it cannot fight Select All or feel like a launcher.
   gset org.gnome.shell.keybindings toggle-application-view "[]"
   # Alt is Command now; move window-drag modifier off Alt onto Super.
   gset org.gnome.desktop.wm.preferences mouse-button-modifier '<Super>'

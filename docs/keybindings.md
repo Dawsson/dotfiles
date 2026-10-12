@@ -10,9 +10,19 @@ Fedora/GNOME only. macOS keeps native Command/Option. Applied by `scripts/gnome.
 | **Super / Win** | **Option** |
 | **Ctrl** | **Control** (never remapped) |
 
-Alt alone does nothing (no menu focus). Super alone still opens the GNOME overview (Mission Control).
+- **Alt alone** does nothing (no menu focus, no overview).
+- **Super tap** opens GNOME **Activities / Overview** (desktops + search — Mission Control-like). It does **not** open Vicinae or any Spotlight-style launcher.
+- **Alt+Space** opens the launcher (Vicinae). **Alt+Tab** is the app switcher.
 
 keyd implements the map in `dotfiles/keyd/default.conf`. Terminal Ctrl+C/V and Alt+C are native (Ghostty config + `configure_terminal_copy_paste` in gnome.sh) and do not need `keyd-application-mapper`. Optional close/tab overrides in `app.conf` still need the mapper (GNOME Shell extension; not available on Shell 50 yet).
+
+### Inland / Keychron MK Pro V2 (and similar)
+
+Use **Windows / Android mode** on the keyboard (rear switch), not Mac/iOS mode.
+
+Mac mode swaps Alt and Super/Command in firmware, so keyd’s physical-position map (Alt=Command, Super=Option, Super-tap→Overview) lands on the wrong keys. Win mode reports standard PC modifiers and matches this repo.
+
+The board also identifies as Apple USB id `05ac:024f` over Bluetooth and the 2.4G dongle. keyd treats that id like a trackpad under a bare `[ids] *`, so `dotfiles/keyd/default.conf` lists `05ac:024f` explicitly (install via `gnome.sh` / `dotup`).
 
 ## Cheat sheet (what you press)
 
@@ -35,9 +45,10 @@ Write **Alt** where you would press **⌘**, and **Super** where you would press
 
 | Action | Press |
 |--------|-------|
-| Launcher (Vicinae) | Alt+Space |
+| Activities / Overview (desktops + search) | **Super tap** (not the launcher) |
+| Launcher (Vicinae) | **Alt+Space** |
 | 1Password Quick Access | Alt+Shift+Space |
-| App switcher (hold Alt, Tab cycles) | Alt+Tab |
+| App switcher (hold Alt, Tab cycles) | **Alt+Tab** |
 | Cycle windows of same app | Alt+` |
 | Close / Quit | Alt+W / Alt+Q |
 | Minimize / Hide | Alt+M / Alt+H |
@@ -45,7 +56,7 @@ Write **Alt** where you would press **⌘**, and **Super** where you would press
 | Fullscreen | Ctrl+Alt+F |
 | Lock screen | Ctrl+Alt+Q |
 | Force Quit (System Monitor) | Alt+Super+Esc |
-| Overview | Super tap |
+| Alt alone | Does nothing |
 
 **Super+Tab does not switch apps.** GNOME’s default includes Super+Tab; this map clears it and keyd no-ops Option+Tab so only **Alt+Tab** (hold Alt, Tab cycles) opens the switcher. Reverse with Alt+Shift+Tab.
 
