@@ -642,8 +642,11 @@ apply_gnome_settings() {
   gset org.gnome.desktop.peripherals.touchpad natural-scroll true
   gset org.gnome.desktop.peripherals.mouse natural-scroll true
   gset org.gnome.shell.extensions.dash-to-dock dock-position 'BOTTOM'
-  gset org.gnome.shell.extensions.dash-to-dock dock-fixed true
-  gset org.gnome.shell.extensions.dash-to-dock autohide false
+  gset org.gnome.shell.extensions.dash-to-dock dock-fixed false
+  gset org.gnome.shell.extensions.dash-to-dock autohide true
+  gset org.gnome.shell.extensions.dash-to-dock intellihide false
+  gset org.gnome.shell.extensions.dash-to-dock require-pressure-to-show false
+  gset org.gnome.shell.extensions.dash-to-dock show-delay 0.1
   gset org.gnome.shell.extensions.dash-to-dock extend-height false
   gset org.gnome.shell.extensions.user-theme name 'WhiteSur-Dark'
 }

@@ -153,7 +153,7 @@ Homebrew, then the curated casks in `Brewfile.gui`:
 - T3 Code Nightly from the current GitHub release. An rpm is used when that nightly published one; otherwise the x86_64 AppImage is installed to `~/.local/opt/t3-code/`
 - Vicinae on Alt+Space. Install prefers COPR `quadratech188/vicinae`, then `curl -fsSL https://vicinae.com/install | bash`. keyd turns Alt+Space into Super+Space; GNOME binds that to `~/.local/bin/dawsson-vicinae` (`vicinae toggle`). GNOME's input-source Super+Space binding is cleared. Prior Ulauncher shortcuts are removed on re-run
 - Tailscale CLI from the official install script, plus the systray desktop app (`tailscale systray`) at login. `--skip-gui` leaves the CLI only. The tray icon needs the AppIndicator extension, which this script enables
-- Dash to Dock on the bottom, always visible (`autohide` left off). Window buttons on the left: close, minimize, maximize
+- Dash to Dock on the bottom, hidden by default and shown on mouse hover at the bottom edge (`dock-fixed` off, `autohide` on, `intellihide` off). Window buttons on the left: close, minimize, maximize
 - WhiteSur GTK, icon, and cursor themes, Inter, and JetBrainsMono Nerd Font
 - Natural scrolling and tap-to-click
 - keyd from the `alternateved/keyd` COPR plus `configure_macos_hotkeys` in `scripts/gnome.sh` so the [shared map](#shared-hotkeys-macos--fedora) matches. Physical Ctrl is never remapped. Terminal Ctrl+C/V copy/paste and Alt+C interrupt are native (Ghostty config + Ptyxis/GNOME Terminal gsettings); they do not need `keyd-application-mapper`. The mapper remains optional for close/tab overrides when a GNOME Shell–compatible keyd extension is available.
