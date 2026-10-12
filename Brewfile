@@ -1,0 +1,37 @@
+# CLI packages for macOS. GUI apps live in Brewfile.gui.
+# Kubernetes tools, Stripe CLI, flyctl, AltTab, Karabiner, Hammerspoon,
+# Discord, games, Warp, Zed, VS Code, JetBrains, and Termius are intentionally absent.
+
+brew "git"
+brew "git-lfs"
+brew "curl"
+brew "jq"
+brew "ripgrep"
+brew "coreutils"
+brew "grc"
+brew "zsh"
+brew "mise"
+brew "starship"
+brew "zoxide"
+brew "gh"
+brew "lazygit"
+brew "btop"
+brew "tmux"
+brew "zellij"
+brew "fastfetch"
+brew "tree"
+brew "wget"
+brew "xh"
+brew "yt-dlp"
+brew "ffmpeg"
+brew "doppler"
+brew "pscale"
+brew "cloudflared"
+brew "restic"
+brew "sops"
+brew "poppler"
+brew "duti"
+
+# CLI, so it stays installed with --skip-gui. The app is in Brewfile.gui.
+cask "1password-cli"
+cask "font-jetbrains-mono-nerd-font"

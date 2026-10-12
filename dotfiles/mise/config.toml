@@ -1,0 +1,12 @@
+# Global mise tool versions. Major/latest channels, not patch pins.
+# `mise install` resolves the newest release that matches each channel.
+
+[tools]
+node = "24"
+bun = "latest"
+go = "latest"
+java = "zulu-21"
+rust = "stable"
+python = "latest"
+uv = "latest"
+pnpm = "latest"

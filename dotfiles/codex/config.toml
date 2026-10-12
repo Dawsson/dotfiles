@@ -1,0 +1,12 @@
+# Codex CLI config managed by dawsson/dotfiles.
+# The API key is not stored here. ~/.codex/cpa.env loads it into $CPA_API_KEY
+# from ~/.codex/cpa-client-key (or from 1Password when ~/.codex/cpa-op-ref is set).
+
+model_provider = "cpa"
+
+[model_providers.cpa]
+name = "Devbox CPA"
+base_url = "https://devbox-dawson.tail20065d.ts.net/v1"
+wire_api = "responses"
+env_key = "CPA_API_KEY"
+supports_websockets = true

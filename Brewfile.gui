@@ -1,0 +1,20 @@
+# macOS GUI apps. Installed by bootstrap unless --skip-gui is set.
+# Tailscale.app includes the CLI. OrbStack is the Docker runtime.
+
+cask "1password"
+cask "ghostty"
+cask "cursor"
+cask "google-chrome"
+cask "helium-browser"
+cask "legcord"
+cask "slack"
+cask "spotify"
+cask "obsidian"
+cask "orbstack"
+cask "raycast"
+cask "rectangle"
+cask "shottr"
+cask "aldente"
+cask "tailscale-app"
+cask "t3-code@nightly"
+cask "grok-bot"
