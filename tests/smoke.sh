@@ -107,6 +107,25 @@ grep -q 'space = macro(leftmeta+space)' dotfiles/keyd/default.conf || fail "Alt+
 grep -q 'w = C-w' dotfiles/keyd/default.conf || fail "Alt+W is not close"
 grep -q 'q = C-q' dotfiles/keyd/default.conf || fail "Alt+Q is not quit"
 grep -q 'tab = swapm(appswitch' dotfiles/keyd/default.conf || fail "Alt+Tab app switcher missing"
+grep -q "switch-applications \"\['<Alt>Tab'\]\"" scripts/gnome.sh \
+  || fail "GNOME switch-applications must be Alt+Tab only"
+grep -q "switch-applications-backward \"\['<Shift><Alt>Tab'\]\"" scripts/gnome.sh \
+  || fail "GNOME switch-applications-backward must be Alt+Shift+Tab"
+if grep -E 'switch-applications.*"\[.*<Super>Tab' scripts/gnome.sh; then
+  fail "GNOME switch-applications must not bind Super+Tab"
+fi
+# Option (Super) layer must swallow Tab so Super+Tab cannot steal the switcher.
+awk '/^\[opt\]/{p=1;next} /^\[/{p=0} p && /^tab = noop$/{found=1} END{exit !found}' \
+  dotfiles/keyd/default.conf || fail "Super+Tab must be noop on the Option layer"
+grep -q 'grave = macro(leftmeta+grave)' dotfiles/keyd/default.conf \
+  || fail "Alt+\` same-app window cycle missing"
+grep -q "switch-group \"\['<Super>grave'\]\"" scripts/gnome.sh \
+  || fail "GNOME switch-group must listen for Super+grave (Alt+\` via keyd)"
+grep -q 'Alt+Tab' docs/keybindings.md || fail "cheat sheet missing Alt+Tab"
+grep -q 'Super+Tab does not switch apps' docs/keybindings.md \
+  || fail "cheat sheet should note Super+Tab does not switch apps"
+printf '%s\n' "$fed_plan" | grep -q 'Alt+Tab app switch (not Super+Tab)' \
+  || fail "fedora plan should state Alt+Tab app switch, not Super+Tab"
 grep -q 'backspace = macro(S-home, backspace)' dotfiles/keyd/default.conf || fail "Alt+Backspace is not delete-to-line-start"
 grep -q '\[opt\]' dotfiles/keyd/default.conf || fail "Option layer missing"
 grep -q 'left = C-left' dotfiles/keyd/default.conf || fail "Super+Left word jump missing"

@@ -404,15 +404,17 @@ configure_force_quit() {
 # Physical Alt = Command, Super = Option. keyd emits Super/Alt chords GNOME hears.
 configure_macos_hotkeys() {
   if [[ "$DRY_RUN" == "1" ]]; then
-    log "would mirror macOS hotkeys (Alt=Command, Super=Option): Alt+Tab app switch, Super+M/H minimize, Super+\` window group, Shift+Super+3/4/5 screenshots, Super+L lock"
+    log "would mirror macOS hotkeys (Alt=Command, Super=Option): Alt+Tab app switch (not Super+Tab), Alt+\` same-app windows, Super+M/H minimize, Shift+Super+3/4/5 screenshots, Super+L lock"
     return 0
   fi
   # Cmd+Tab → keyd emits Alt+Tab and keeps Alt held while Tab cycles.
+  # Schema default is ['<Super>Tab','<Alt>Tab']; keep only Alt+Tab so Super+Tab
+  # does not steal app switching (keyd also noops Super+Tab on the Option layer).
   gset org.gnome.desktop.wm.keybindings switch-applications "['<Alt>Tab']"
   gset org.gnome.desktop.wm.keybindings switch-applications-backward "['<Shift><Alt>Tab']"
   gset org.gnome.desktop.wm.keybindings switch-windows "[]"
   gset org.gnome.desktop.wm.keybindings switch-windows-backward "[]"
-  # Cmd+` cycles windows of the same app (keyd emits Super+grave).
+  # Cmd+` cycles windows of the same app (physical Alt+`; keyd emits Super+grave).
   gset org.gnome.desktop.wm.keybindings switch-group "['<Super>grave']"
   gset org.gnome.desktop.wm.keybindings switch-group-backward "['<Shift><Super>grave']"
   # Cmd+M minimize; Cmd+H hide ≈ minimize on GNOME.

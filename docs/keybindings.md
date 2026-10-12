@@ -47,6 +47,8 @@ Write **Alt** where you would press **⌘**, and **Super** where you would press
 | Force Quit (System Monitor) | Alt+Super+Esc |
 | Overview | Super tap |
 
+**Super+Tab does not switch apps.** GNOME’s default includes Super+Tab; this map clears it and keyd no-ops Option+Tab so only **Alt+Tab** (hold Alt, Tab cycles) opens the switcher. Reverse with Alt+Shift+Tab.
+
 ### Screenshots
 
 | Action | Press |
