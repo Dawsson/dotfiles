@@ -92,7 +92,11 @@ printf '%s\n' "$fed_plan" | grep -q 'mirror macOS hotkeys' || fail "fedora plan 
 grep -qx 'cask "vicinae"' Brewfile.gui || fail "Brewfile.gui missing the Vicinae cask"
 grep -q 'shell-integration-features = ssh-terminfo,ssh-env' dotfiles/ghostty/config \
   || fail "Ghostty config missing SSH terminfo/env features for paste/remote"
-grep -q 'ghostty +ssh' dotfiles/zsh/.zshrc || fail "dx() should prefer ghostty +ssh"
+grep -q '^dss()' dotfiles/zsh/.zshrc || fail "desktop SSH helper should be named dss()"
+grep -q 'ghostty +ssh' dotfiles/zsh/.zshrc || fail "dss() should prefer ghostty +ssh"
+if grep -qE '^dx\(\)|^alias dx=|function dx' dotfiles/zsh/.zshrc; then
+  fail "zshrc still defines dx as a shell function/alias (reserved for status CLI)"
+fi
 grep -q 'm = macro(leftmeta+m)' dotfiles/keyd/default.conf || fail "Super+M is not minimize"
 grep -q '3 = macro(leftshift+leftmeta+3)' dotfiles/keyd/default.conf || fail "Shift+Super+3 screenshot chord missing"
 if grep -qx 'cask "raycast"' Brewfile.gui; then

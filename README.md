@@ -99,7 +99,7 @@ On Fedora, keyd puts Super in the Command position and `scripts/gnome.sh` mirror
 | Fullscreen | ⌃⌘F | Ctrl+Super+F |
 | Overview / Mission Control | Mission Control | Super tap (GNOME overview) |
 
-Gaps that cannot match cleanly: macOS Force Quit (⌥⌘Esc), Rectangle window tiling (Mac-only cask here), and OS-reserved chords. Ghostty uses Ctrl+Shift+C/V for copy/paste in the terminal on both OSes. SSH from Ghostty enables `ssh-terminfo` / `ssh-env` so remotes do not show paste junk like `200~`.
+Gaps that cannot match cleanly: macOS Force Quit (⌥⌘Esc), Rectangle window tiling (Mac-only cask here), and OS-reserved chords. Ghostty uses Ctrl+Shift+C/V for copy/paste in the terminal on both OSes. SSH from Ghostty enables `ssh-terminfo` / `ssh-env` so remotes do not show paste junk like `200~`. Use `dss` (desktop ssh) to reach `dawson@desktop`; it prefers `ghostty +ssh` when available.
 
 ## macOS only
 
