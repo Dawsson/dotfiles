@@ -1,3 +1,5 @@
 .DS_Store
 *.dotfiles-backup.*
 .claude/
+__pycache__/
+*.pyc
