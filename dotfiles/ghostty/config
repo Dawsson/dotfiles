@@ -1,0 +1,79 @@
+# This is the configuration file for Ghostty.
+#
+# This template file has been automatically created at the following
+# path since Ghostty couldn't find any existing config files on your system:
+#
+#   /Users/dawson/Library/Application Support/com.mitchellh.ghostty/config
+#
+# The template does not set any default options, since Ghostty ships
+# with sensible defaults for all options. Users should only need to set
+# options that they want to change from the default.
+#
+# Run `ghostty +show-config --default --docs` to view a list of
+# all available config options and their default values.
+#
+# Additionally, each config option is also explained in detail
+# on Ghostty's website, at https://ghostty.org/docs/config.
+
+# Config syntax crash course
+# ==========================
+# # The config file consists of simple key-value pairs,
+# # separated by equals signs.
+# font-family = Iosevka
+# window-padding-x = 2
+#
+# # Spacing around the equals sign does not matter.
+# # All of these are identical:
+# key=value
+# key= value
+# key =value
+# key = value
+#
+# # Any line beginning with a # is a comment. It's not possible to put
+# # a comment after a config option, since it would be interpreted as a
+# # part of the value. For example, this will have a value of "#123abc":
+# background = #123abc
+#
+# # Empty values are used to reset config keys to default.
+# key =
+#
+# # Some config options have unique syntaxes for their value,
+# # which is explained in the docs for that config option.
+# # Just for example:
+# resize-overlay-duration = 4s 200ms
+keybind = shift+enter=text:\n
+
+adjust-cell-height = 30%
+
+background = #121212
+foreground = #dedede
+selection-background = #474e91
+selection-foreground = #f4f4f4
+cursor-color = #ffa560
+cursor-text = #ffffff
+palette = 0=#929292
+palette = 1=#e27373
+palette = 2=#94b979
+palette = 3=#ffba7b
+palette = 4=#97bedc
+palette = 5=#e1c0fa
+palette = 6=#00988e
+palette = 7=#dedede
+palette = 8=#bdbdbd
+palette = 9=#ffa1a1
+palette = 10=#bddeab
+palette = 11=#ffdca0
+palette = 12=#b1d8f6
+palette = 13=#fbdaff
+palette = 14=#1ab2a8
+palette = 15=#ffffff
+
+
+
+# Minimal chrome on top of the existing palette.
+font-family = JetBrainsMono Nerd Font
+font-size = 13
+window-padding-x = 12
+window-padding-y = 8
+keybind = ctrl+shift+c=copy_to_clipboard
+keybind = ctrl+shift+v=paste_from_clipboard
