@@ -224,6 +224,48 @@ set_helium_default() {
   log "Helium (${desktop}) set as the default browser. Chrome stays installed."
 }
 
+enable_tailscale_systray() {
+  local desktop
+  if [[ "$DRY_RUN" == "1" ]]; then
+    log "would enable the Tailscale systray desktop app"
+    return 0
+  fi
+  if ! have tailscale; then
+    warn "tailscale is not installed; skipping the systray"
+    return 0
+  fi
+  dnf_install wl-clipboard || true
+  sudo systemctl enable --now tailscaled || warn "could not enable tailscaled"
+  if [[ "$(id -u)" -ne 0 ]]; then
+    sudo tailscale set --operator="$(current_user)" \
+      || warn "could not set the Tailscale operator"
+  fi
+  desktop="${HOME}/.config/autostart/tailscale-systray.desktop"
+  mkdir -p "${HOME}/.config/autostart"
+  if ! tailscale configure systray --enable-startup=freedesktop; then
+    cat > "$desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Tailscale
+Comment=Tailscale system tray
+Exec=tailscale systray
+TryExec=tailscale
+Icon=tailscale
+Terminal=false
+Categories=Network;
+X-GNOME-Autostart-enabled=true
+EOF
+    warn "wrote ${desktop} because tailscale configure systray did not install autostart"
+  fi
+  if [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]] && have pgrep; then
+    if ! pgrep -f '[t]ailscale systray' >/dev/null 2>&1; then
+      nohup tailscale systray >/dev/null 2>&1 &
+    fi
+  fi
+  log "Tailscale systray starts at login. The icon uses the AppIndicator extension."
+}
+
 fedora_gui() {
   section "Fedora apps"
   dnf_install flatpak fuse fuse-libs
@@ -237,6 +279,7 @@ fedora_gui() {
   install_1password_helium
   install_ghostty_package
   set_helium_default
+  enable_tailscale_systray
 }
 
 install_ulauncher() {
@@ -244,41 +287,41 @@ install_ulauncher() {
     log "would install Ulauncher and bind it to Super+Space"
     return 0
   fi
-  if ! rpm -q ulauncher >/dev/null 2>&1; then
-      sudo dnf install -y ulauncher || {
+  if ! rpm -q ulauncher >/dev/null 2>&1 || ! rpm -q wmctrl >/dev/null 2>&1; then
+    sudo dnf install -y ulauncher wmctrl || {
       warn "ulauncher is not in the Fedora repos; trying the troycurtisjr/ulauncher COPR"
       enable_copr troycurtisjr/ulauncher || warn "could not enable the Ulauncher COPR"
-      sudo dnf install -y ulauncher || warn "Ulauncher was not installed"
+      sudo dnf install -y ulauncher wmctrl || warn "Ulauncher was not installed"
     }
   fi
 }
 
-ulauncher_command() {
-  if have ulauncher-toggle; then
-    printf '%s\n' "ulauncher-toggle"
-  elif have ulauncher; then
-    printf '%s\n' "ulauncher"
-  else
-    printf '%s\n' "ulauncher-toggle"
-  fi
-}
-
 configure_ulauncher() {
-  local config cmd
-  cmd="$(ulauncher_command)"
+  local config cmd daemon
+  # GNOME launches this with a small PATH. An absolute path is the reliable form.
+  cmd="/usr/bin/ulauncher-toggle"
+  daemon="/usr/bin/ulauncher"
   if [[ "$DRY_RUN" == "1" ]]; then
-    log "would bind Super+Space to ${cmd} and clear GNOME's input-source binding"
+    log "would bind Super+Space to ${cmd} via F14 and clear GNOME's input-source binding"
     return 0
   fi
+  if have ulauncher-toggle; then
+    cmd="$(command -v ulauncher-toggle)"
+  fi
+  if have ulauncher; then
+    daemon="$(command -v ulauncher)"
+  fi
   config="${HOME}/.config/ulauncher/settings.json"
-  py set-json "$config" hotkey '<Super>space' hotkey-show-app '<Super>space' >/dev/null || true
+  # Ulauncher also listens for its own hotkey. On this chord that second
+  # listener closes the window the GNOME shortcut just opened.
+  py set-json "$config" hotkey '<Control><Alt>F12' hotkey-show-app '<Control><Alt>F12' >/dev/null || true
   mkdir -p "${HOME}/.config/autostart"
   cat > "${HOME}/.config/autostart/ulauncher.desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=Ulauncher
 Comment=Application launcher
-Exec=${cmd}
+Exec=${daemon} --hide-window
 Icon=ulauncher
 Terminal=false
 X-GNOME-Autostart-enabled=true
@@ -298,7 +341,7 @@ EOF
   gset org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/ulauncher/ \
     command "$cmd"
   gset org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/ulauncher/ \
-    binding '<Super>space'
+    binding '<F14>'
 }
 
 configure_1password_quick_access() {
@@ -338,7 +381,11 @@ install_keyd() {
     sudo cp /etc/keyd/default.conf "/etc/keyd/default.conf.dotfiles-backup.$(date +%Y%m%d%H%M%S)"
   fi
   sudo cp "${DOTFILES_ROOT}/dotfiles/keyd/default.conf" /etc/keyd/default.conf
-  enable_system_service keyd
+  if systemctl is-active --quiet keyd 2>/dev/null; then
+    sudo systemctl restart keyd || warn "keyd did not restart; run: sudo systemctl restart keyd"
+  else
+    enable_system_service keyd
+  fi
   if getent group keyd >/dev/null 2>&1; then
     ensure_group_member "$(current_user)" keyd
   fi

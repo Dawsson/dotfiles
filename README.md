@@ -70,7 +70,7 @@ Configs are symlinks back into this repo, except `~/.codex/config.toml`. That fi
 - Shell: zsh, Starship, zoxide, the shared zshrc / gitconfig / tmux / Ghostty config
 - mise toolchains: Node 24, Bun, Go, Java (Zulu 21), Rust, Python, uv, pnpm
 - CLIs: gh, lazygit, btop, tmux, zellij, fastfetch, tree, wget, xh, yt-dlp, ffmpeg, doppler, pscale, cloudflared, restic, sops, poppler, git-lfs, ripgrep, jq
-- Tailscale, 1Password app, 1Password CLI
+- Tailscale, 1Password app, 1Password CLI. On Fedora the desktop app is the Tailscale systray, started at login
 - Ghostty, Cursor, T3 Code Nightly, Grok Bot
 - Google Chrome and Helium. Helium becomes the default browser. Chrome stays installed.
 - Legcord, Slack, Spotify, Obsidian. Slack is a Homebrew cask on macOS and the Flathub app on Fedora.
@@ -99,11 +99,12 @@ Homebrew, then the curated casks in `Brewfile.gui`:
 - Flatpak (Flathub) for Legcord, Slack, Spotify, and Obsidian
 - Cursor's yum repo, Google Chrome's rpm, Helium from the `imput/helium` COPR, Ghostty from the `scottames/ghostty` COPR (the repo Ghostty's install docs use; Fedora itself does not ship it), Grok Bot from Cursor's Linux rpm feed
 - T3 Code Nightly from the current GitHub release. An rpm is used when that nightly published one; otherwise the x86_64 AppImage is installed to `~/.local/opt/t3-code/`
-- Ulauncher on Super+Space. GNOME's Super+Space input-source shortcut is cleared. If `ulauncher` is not in the Fedora repos, the script enables the `troycurtisjr/ulauncher` COPR
+- Ulauncher on Super+Space. keyd turns that chord into F14, and GNOME binds F14 to `/usr/bin/ulauncher-toggle`. Ulauncher's own hotkey is a different chord, so the same press cannot open the window and close it again. GNOME's Super+Space input-source shortcut is cleared. If `ulauncher` is not in the Fedora repos, the script enables the `troycurtisjr/ulauncher` COPR
+- Tailscale CLI from the official install script, plus the systray desktop app (`tailscale systray`) at login. `--skip-gui` leaves the CLI only. The tray icon needs the AppIndicator extension, which this script enables
 - Dash to Dock on the bottom, always visible (`autohide` left off). Window buttons on the left: close, minimize, maximize
 - WhiteSur GTK, icon, and cursor themes, Inter, and JetBrainsMono Nerd Font
 - Natural scrolling and tap-to-click
-- keyd from the `alternateved/keyd` COPR (upstream's Fedora package; it is not in the Fedora repos). Holding Super sends the usual Command chords (copy, paste, cut, undo, select-all, and the rest of the Control-letter keys). Super+Space stays Super+Space for Ulauncher. Shift+Super+Space opens 1Password Quick Access (`1password --quick-access`), the same chord as Shift+Command+Space on the Mac. A tap of Super still opens the overview. Terminals are remapped to Ctrl+Shift+C/V through `keyd-application-mapper` when that helper is installed
+- keyd from the `alternateved/keyd` COPR (upstream's Fedora package; it is not in the Fedora repos). Holding Super sends the usual Command chords (copy, paste, cut, undo, select-all, and the rest of the Control-letter keys). Super+Space becomes F14, which opens Ulauncher. Shift+Super+Space opens 1Password Quick Access (`1password --quick-access`), the same chord as Shift+Command+Space on the Mac. A tap of Super still opens the overview. Terminals are remapped to Ctrl+Shift+C/V through `keyd-application-mapper` when that helper is installed
 - Packaged GNOME extensions: Dash to Dock, AppIndicator, user themes (`gnome-shell-extension-user-theme`), and Blur My Shell. If the Blur My Shell package is missing, the script falls back to `gnome-extensions-cli`
 
 Log out and back in after the first Fedora run so the new groups, keyd, and GNOME extensions apply. If the dock or hotkey did not stick, open a terminal inside the graphical session and run `./scripts/gnome.sh`.
