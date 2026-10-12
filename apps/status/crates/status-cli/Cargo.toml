@@ -1,0 +1,17 @@
+[package]
+name = "status-cli"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "dx — machine/dotfiles status CLI"
+
+[[bin]]
+name = "dx"
+path = "src/main.rs"
+
+[dependencies]
+status-core = { workspace = true }
+clap = { workspace = true }
+anyhow = { workspace = true }

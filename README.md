@@ -60,6 +60,7 @@ The bootstrap refuses anything that is not macOS or Fedora. On Fedora it warns a
 | `scripts/agents.sh` | Claude Code, Codex CLI, and the CPA provider block in `~/.codex/config.toml`. |
 | `scripts/pyhelper.py` | Release-asset lookup, Codex config merge, and the Helium MIME default. |
 | `tests/smoke.sh` | `bash -n`, shellcheck, dry-run plans, symlink and CPA tests. |
+| `apps/status/` | Rust workspace for the `dx` status CLI and `dx-tray` menubar stub. |
 
 Configs are symlinks back into this repo, except `~/.codex/config.toml`. That file is merged so an existing Codex config is backed up and kept, with the CPA provider added. `model_provider` is set to `cpa` only when the file is new or does not already choose one. A second run refreshes the CPA block and leaves the rest of the file alone.
 
@@ -78,6 +79,23 @@ Configs are symlinks back into this repo, except `~/.codex/config.toml`. That fi
 - Codex CLI from `https://chatgpt.com/codex/install.sh`
 
 The zshrc still loads keys from files (`~/.codex/config.toml`, `~/.codex/secrets.env`, `~/.codex/cpa.env`). Homebrew, OrbStack, `open`, and `launchctl` run only on macOS. Paths use `$HOME`.
+
+## Status app (`dx` / `dx-tray`)
+
+Optional Rust tools that live in this repo (not a separate project) under [`apps/status/`](apps/status/):
+
+- **`dx`** — clap CLI for machine/dotfiles checks (`doctor`) and live status (`status`, `tailscale`)
+- **`dx-tray`** — menubar/tray stub with a Status menu (Tailscale line today)
+
+```bash
+cd apps/status
+cargo build --release
+cargo run -p status-cli -- doctor
+cargo install --path crates/status-cli
+cargo install --path crates/status-ui
+```
+
+Bootstrap does not install these yet. Full notes, GPUI follow-up, and layout: [`apps/status/README.md`](apps/status/README.md).
 
 ## macOS only
 
