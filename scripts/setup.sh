@@ -170,6 +170,56 @@ setup_github_account() {
     || warn "gh auth login failed"
 }
 
+CPA_OP_REF_DEFAULT='op://Personal/Devbox CPA client key/credential'
+
+trim_line() {
+  local value="$1"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s' "$value"
+}
+
+ensure_cpa_from_1password() {
+  local ref_file key_file ref key
+  ref_file="${HOME}/.codex/cpa-op-ref"
+  key_file="${HOME}/.codex/cpa-client-key"
+  if [[ "$DRY_RUN" == "1" ]]; then
+    log "would write ${CPA_OP_REF_DEFAULT} to ~/.codex/cpa-op-ref when that file is missing"
+    log "would save ~/.codex/cpa-client-key from 1Password when op is signed in"
+    return 0
+  fi
+  mkdir -p "${HOME}/.codex"
+  if [[ ! -s "$ref_file" ]]; then
+    write_private_file "$ref_file" "$CPA_OP_REF_DEFAULT"
+    log "saved the 1Password CPA reference"
+  fi
+  if [[ -s "$key_file" ]]; then
+    log "CPA key file is already present"
+    return 0
+  fi
+  if ! op_signed_in; then
+    log "1Password CLI is not signed in. The next shell reads the CPA key after op sign-in."
+    return 0
+  fi
+  IFS= read -r ref < "$ref_file" || ref=""
+  ref="$(trim_line "$ref")"
+  case "$ref" in
+    op://*) ;;
+    *)
+      warn "cpa-op-ref is not an op:// URI"
+      return 0
+      ;;
+  esac
+  key="$(op read "$ref" 2>/dev/null || true)"
+  if [[ -z "$key" ]]; then
+    warn "op read did not return the CPA key"
+    return 0
+  fi
+  write_private_file "$key_file" "$key"
+  unset key
+  log "CPA key saved from 1Password"
+}
+
 write_private_file() {
   local dest="$1" content="$2" old_umask
   old_umask="$(umask)"
@@ -183,12 +233,11 @@ write_private_file() {
 setup_cpa_key() {
   local choice key ref
   section "CPA key"
+  ensure_cpa_from_1password
   if [[ "$DRY_RUN" == "1" ]]; then
-    log "would ask for the CPA key or an op:// reference"
     return 0
   fi
   if [[ -s "${HOME}/.codex/cpa-client-key" ]]; then
-    log "CPA key file is already present"
     return 0
   fi
   cat >/dev/tty <<'EOF'

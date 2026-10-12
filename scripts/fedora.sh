@@ -387,8 +387,36 @@ fedora_packages() {
   install_cua
   if [[ "$SKIP_GUI" == "1" ]]; then
     log "skipping Fedora GUI apps and GNOME settings"
+    refresh_fedora_services
     return 0
   fi
   fedora_gui
   fedora_desktop
+  refresh_fedora_services
+}
+
+refresh_fedora_services() {
+  local unit
+  if [[ "$DRY_RUN" == "1" ]]; then
+    log "would restart managed services that are already running (keyd, docker, libvirtd, tailscaled)"
+    return 0
+  fi
+  sudo systemctl daemon-reload >/dev/null 2>&1 || true
+  for unit in keyd docker libvirtd tailscaled; do
+    systemctl cat "${unit}.service" >/dev/null 2>&1 || continue
+    sudo systemctl enable "$unit" >/dev/null 2>&1 || warn "could not enable ${unit}"
+    if systemctl is-active --quiet "$unit"; then
+      sudo systemctl restart "$unit" || warn "could not restart ${unit}"
+      log "restarted ${unit}"
+    fi
+  done
+  if [[ -n "${XDG_RUNTIME_DIR:-}" ]]; then
+    systemctl --user daemon-reload >/dev/null 2>&1 || true
+    if systemctl --user cat keyd-application-mapper.service >/dev/null 2>&1 \
+      && systemctl --user is-active --quiet keyd-application-mapper.service; then
+      systemctl --user restart keyd-application-mapper.service \
+        || warn "could not restart keyd-application-mapper"
+      log "restarted keyd-application-mapper"
+    fi
+  fi
 }

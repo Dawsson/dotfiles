@@ -281,5 +281,19 @@ if [[ -d "$HOME/.grok/completions/zsh" ]]; then
   autoload -Uz compinit && compinit -C
 fi
 
+# Pull origin/main and run bootstrap again. Pass bootstrap flags through, for example: dotup --skip-gui
+dotup() {
+  local link root
+  link="${HOME}/.zshrc"
+  if [[ ! -L "$link" ]]; then
+    printf 'dotup: ~/.zshrc is not a symlink into the dotfiles repo\n' >&2
+    return 1
+  fi
+  link="$(readlink "$link")" || return 1
+  root="$(cd "$(dirname "$link")/../.." && pwd)" || return 1
+  git -C "$root" pull --ff-only origin main || return 1
+  "$root/bootstrap.sh" "$@"
+}
+
 # CPA key and the optional Claude Code opt-in. No secrets in this file.
 [ -f "$HOME/.codex/cpa.env" ] && . "$HOME/.codex/cpa.env"

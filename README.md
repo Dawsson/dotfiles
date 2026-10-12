@@ -67,7 +67,7 @@ Configs are symlinks back into this repo, except `~/.codex/config.toml`. That fi
 
 ## Installed on both
 
-- Shell: zsh, Starship, zoxide, the shared zshrc / gitconfig / tmux / Ghostty config
+- Shell: zsh, Starship, zoxide, the shared zshrc / gitconfig / tmux / Ghostty config. On Fedora the login shell is changed with `sudo chsh -s "$(command -v zsh)" "$USER"` when it is not already zsh. Log out and back in after that. `~/.bashrc` also sources `cpa.env`, so a bash login still gets the CPA key. From zsh, `dotup` pulls `origin/main` and runs `bootstrap.sh` again
 - mise toolchains: Node 24, Bun, Go, Java (Zulu 21), Rust, Python, uv, pnpm
 - CLIs: gh, lazygit, btop, tmux, zellij, fastfetch, tree, wget, xh, yt-dlp, ffmpeg, doppler, pscale, cloudflared, restic, sops, poppler, git-lfs, ripgrep, jq
 - Tailscale, 1Password app, 1Password CLI. On Fedora the desktop app is the Tailscale systray, started at login
@@ -104,7 +104,7 @@ Homebrew, then the curated casks in `Brewfile.gui`:
 - Dash to Dock on the bottom, always visible (`autohide` left off). Window buttons on the left: close, minimize, maximize
 - WhiteSur GTK, icon, and cursor themes, Inter, and JetBrainsMono Nerd Font
 - Natural scrolling and tap-to-click
-- keyd from the `alternateved/keyd` COPR (upstream's Fedora package; it is not in the Fedora repos). Holding Super sends the usual Command chords (copy, paste, cut, undo, select-all, and the rest of the Control-letter keys). Super+Space becomes F14, which opens Ulauncher. Shift+Super+Space opens 1Password Quick Access (`1password --quick-access`), the same chord as Shift+Command+Space on the Mac. A tap of Super still opens the overview. Terminals are remapped to Ctrl+Shift+C/V through `keyd-application-mapper` when that helper is installed
+- keyd from the `alternateved/keyd` COPR (upstream's Fedora package; it is not in the Fedora repos). Holding Super sends the usual Command chords (copy, paste, cut, undo, select-all, and the rest of the Control-letter keys). Super+W closes a tab and Super+Q quits the app, the same chords as Command+W and Command+Q on the Mac. In a terminal those two become Ctrl+Shift+W and Ctrl+Shift+Q, so Ctrl+W can still delete a word. Super+Space becomes F14, which opens Ulauncher. Shift+Super+Space opens 1Password Quick Access (`1password --quick-access`), the same chord as Shift+Command+Space on the Mac. A tap of Super still opens the overview. Terminals are remapped through `keyd-application-mapper` when that helper is installed. Running the bootstrap again restarts keyd, docker, libvirtd, and tailscaled when those services are already running, and restarts the application mapper when that user service is running
 - Packaged GNOME extensions: Dash to Dock, AppIndicator, user themes (`gnome-shell-extension-user-theme`), and Blur My Shell. If the Blur My Shell package is missing, the script falls back to `gnome-extensions-cli`
 
 Log out and back in after the first Fedora run so the new groups, keyd, and GNOME extensions apply. If the dock or hotkey did not stick, open a terminal inside the graphical session and run `./scripts/gnome.sh`.
@@ -130,7 +130,7 @@ env_key = "CPA_API_KEY"
 supports_websockets = true
 ```
 
-The key is never committed. `~/.codex/cpa.env` is symlinked from this repo and sourced at the end of `.zshrc`. It exports `CPA_API_KEY` from `~/.codex/cpa-client-key`. If that file is missing and `~/.codex/cpa-op-ref` contains a single `op://` URI, the next shell runs `op read` and writes the key file (mode 600). An existing key file wins, so `op` is not called on every prompt.
+The key is never committed. `~/.codex/cpa.env` is symlinked from this repo and sourced at the end of `.zshrc`. The same line is appended to `~/.bashrc` when it is not already there, so a bash login still loads the key. It exports `CPA_API_KEY` from `~/.codex/cpa-client-key`. Bootstrap writes `op://Personal/Devbox CPA client key/credential` to `~/.codex/cpa-op-ref` when that file is missing. If `op` is signed in, it also writes `~/.codex/cpa-client-key` (mode 600) from that item. Otherwise the next shell runs `op read` and writes the key file. An existing key file wins, so `op` is not called on every prompt. An existing `cpa-op-ref` is left as it is.
 
 Claude Code does not use this endpoint unless you opt in. `--with-claude-cpa`, or `touch ~/.codex/claude-cpa.enable`, exports:
 
@@ -157,16 +157,11 @@ The Linux extension file lives in `/usr/share/chromium/extensions`, which is the
 
 ## Manual steps after install
 
-1. Open a new terminal so the zshrc, mise, and `cpa.env` are loaded. If `chsh` could not change the login shell, run `chsh -s "$(command -v zsh)"`.
+1. On Fedora, log out and back in so the login shell is zsh. If `chsh` could not change it, run `sudo chsh -s "$(command -v zsh)" "$USER"`. Until that login, bash still sources `cpa.env` from `~/.bashrc`.
 2. If you passed `--skip-setup`, run `./bootstrap.sh --setup` and sign in to 1Password, Tailscale, and GitHub there.
-3. Install the CPA client key if the prompt was skipped:
+3. The CPA item is `op://Personal/Devbox CPA client key/credential`. Bootstrap writes that to `~/.codex/cpa-op-ref` when the file is missing and, once `op` is signed in, writes `~/.codex/cpa-client-key`. To paste a different key instead:
    ```bash
    install -m 600 /dev/stdin ~/.codex/cpa-client-key
-   ```
-   or, when the item lives in 1Password:
-   ```bash
-   printf '%s\n' 'op://Vault/Item/password' > ~/.codex/cpa-op-ref
-   chmod 600 ~/.codex/cpa-op-ref
    ```
 4. Open another shell and check the key without printing it: `[ -n "$CPA_API_KEY" ] && echo "CPA key is set"`. Then run `codex`.
 5. Sign in to Cursor, Grok Bot, T3 Code Nightly, and Slack.

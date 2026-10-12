@@ -88,6 +88,14 @@ printf '%s\n' "$fed_plan" | grep -q 'Slack' || fail "fedora plan missing Slack"
 printf '%s\n' "$fed_plan" | grep -q 'Tailscale systray' || fail "fedora plan missing the Tailscale desktop app"
 printf '%s\n' "$fed_plan" | grep -q '/usr/bin/ulauncher-toggle' || fail "fedora plan missing the Ulauncher shortcut command"
 printf '%s\n' "$fed_plan" | grep -q 'via F14' || fail "fedora plan missing the F14 Ulauncher binding"
+printf '%s\n' "$fed_plan" | grep -q 'sudo chsh -s' || fail "fedora plan missing sudo chsh"
+printf '%s\n' "$fed_plan" | grep -q 'cpa.env from ~/.bashrc' || fail "fedora plan missing the bashrc CPA fallback"
+printf '%s\n' "$fed_plan" | grep -q 'op://Personal/Devbox CPA client key/credential' || fail "fedora plan missing the default CPA reference"
+printf '%s\n' "$fed_plan" | grep -q 'restart managed services' || fail "fedora plan missing service refresh"
+grep -q 'w = C-w' dotfiles/keyd/default.conf || fail "Super+W is not close-tab"
+grep -q 'q = C-q' dotfiles/keyd/default.conf || fail "Super+Q is not quit"
+grep -q 'cmd.w = C-S-w' dotfiles/keyd/app.conf || fail "terminal Super+W is not close-tab"
+grep -q 'dotup()' dotfiles/zsh/.zshrc || fail "zshrc missing dotup"
 if printf '%s\n' "$skip_plan" | grep -q 'Tailscale systray'; then
   fail "--skip-gui still plans the Tailscale desktop app"
 fi
@@ -127,6 +135,10 @@ HOME="$tmp" DOTFILES_OS=fedora ./bootstrap.sh --only-dotfiles >/dev/null
 find "$tmp" -name '*.dotfiles-backup.*' | grep -q . && fail "re-run created a backup"
 HOME="$tmp" DOTFILES_OS=macos ./bootstrap.sh --only-dotfiles >/dev/null
 [[ -L "$tmp/Library/Application Support/com.mitchellh.ghostty/config" ]] || fail "macOS ghostty path"
+grep -F -q '# dawsson-dotfiles cpa.env' "$tmp/.bashrc" || fail "bashrc does not source cpa.env"
+[[ "$(grep -F -c '# dawsson-dotfiles cpa.env' "$tmp/.bashrc")" -eq 1 ]] || fail "bashrc CPA source was duplicated"
+grep -F -q 'op://Personal/Devbox CPA client key/credential' "$tmp/.codex/cpa-op-ref" || fail "default CPA reference was not written"
+[[ "$(stat -c %a "$tmp/.codex/cpa-op-ref")" == "600" ]] || fail "cpa-op-ref is not mode 600"
 
 echo "== codex merge preserves an existing config"
 work="$(mktemp -d)"
@@ -160,6 +172,21 @@ HOME="$tmp" bash -c 'source "$HOME/.codex/cpa.env"; [ "$ANTHROPIC_BASE_URL" = "h
 case "${ANTHROPIC_BASE_URL:-}" in
   */v1) fail "ANTHROPIC_BASE_URL leaked into this shell with a /v1 suffix" ;;
 esac
+
+echo "== cpa.env keeps spaces in the 1Password reference"
+rm -f "$tmp/.codex/cpa-client-key"
+mkdir -p "$tmp/bin"
+cat > "$tmp/bin/op" <<'EOF'
+#!/bin/sh
+printf '%s\n' "$2" > "$HOME/op-ref-seen"
+printf '%s\n' 'from-op'
+EOF
+chmod +x "$tmp/bin/op"
+PATH="$tmp/bin:$PATH" HOME="$tmp" bash -c 'source "$HOME/.codex/cpa.env"; [ "$CPA_API_KEY" = "from-op" ]' \
+  || fail "cpa.env did not read the spaced op reference"
+grep -F -q 'op://Personal/Devbox CPA client key/credential' "$tmp/op-ref-seen" \
+  || fail "op read dropped spaces from the CPA reference"
+[[ "$(stat -c %a "$tmp/.codex/cpa-client-key")" == "600" ]] || fail "materialized CPA key is not mode 600"
 
 echo "== release metadata"
 t3="$(python3 scripts/pyhelper.py t3-nightly x86_64)"
