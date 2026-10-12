@@ -229,7 +229,8 @@ nkx() {
   _nx_load_nvidia_key
   codex --profile nvidia-kimi --remote ws://127.0.0.1:8765 --cd "$PWD" --dangerously-bypass-approvals-and-sandbox "$@"
 }
-dx() { ssh dawson@desktop "$@"; }
+# dss = desktop ssh (formerly dx; dx is the status CLI binary).
+dss() { ssh dawson@desktop "$@"; }
 nbrew() { command nb "$@"; }
 
 if [[ "$(uname -s)" == "Darwin" ]]; then

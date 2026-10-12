@@ -8,7 +8,7 @@ Lives **in this dotfiles repo** (monorepo) under `apps/status/` so shell configs
 | `dx` | `status-cli` | clap CLI: `doctor`, `tailscale` / `status` |
 | `dx-tray` | `status-ui` | Menubar/tray stub with a Status menu |
 
-Shared providers live in `status-core`.
+Shared providers live in `status-core`. The shell helper for SSH to the desktop is **`dss`** (not `dx`); this PR renames the old `dx()` zsh function so the cargo-installed `dx` binary is reachable.
 
 ## Requirements
 

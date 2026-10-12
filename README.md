@@ -84,7 +84,7 @@ The zshrc still loads keys from files (`~/.codex/config.toml`, `~/.codex/secrets
 
 Optional Rust tools that live in this repo (not a separate project) under [`apps/status/`](apps/status/):
 
-- **`dx`** — clap CLI for machine/dotfiles checks (`doctor`) and live status (`status`, `tailscale`)
+- **`dx`** — clap CLI for machine/dotfiles checks (`doctor`) and live status (`status`, `tailscale`). Not a shell function; desktop SSH is `dss`.
 - **`dx-tray`** — menubar/tray stub with a Status menu (Tailscale line today)
 
 ```bash
