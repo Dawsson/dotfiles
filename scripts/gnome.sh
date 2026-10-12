@@ -282,52 +282,63 @@ fedora_gui() {
   enable_tailscale_systray
 }
 
-install_ulauncher() {
+install_vicinae() {
   if [[ "$DRY_RUN" == "1" ]]; then
-    log "would install Ulauncher and bind it to Super+Space"
+    log "would install Vicinae (COPR quadratech188/vicinae, else https://vicinae.com/install) and bind Super+Space to vicinae toggle"
     return 0
   fi
-  if ! rpm -q ulauncher >/dev/null 2>&1 || ! rpm -q wmctrl >/dev/null 2>&1; then
-    sudo dnf install -y ulauncher wmctrl || {
-      warn "ulauncher is not in the Fedora repos; trying the troycurtisjr/ulauncher COPR"
-      enable_copr troycurtisjr/ulauncher || warn "could not enable the Ulauncher COPR"
-      sudo dnf install -y ulauncher wmctrl || warn "Ulauncher was not installed"
-    }
+  if have vicinae || rpm -q vicinae >/dev/null 2>&1; then
+    return 0
   fi
+  enable_copr quadratech188/vicinae || warn "could not enable the Vicinae COPR"
+  if sudo dnf install -y vicinae; then
+    return 0
+  fi
+  warn "Vicinae COPR package was not installed; trying the official install script"
+  curl -fsSL https://vicinae.com/install | bash || warn "Vicinae was not installed"
 }
 
-configure_ulauncher() {
-  local config cmd daemon launcher
-  # GNOME launches this with a small PATH. An absolute path is the reliable form.
-  # The helper starts the daemon, then toggles, so the first press still opens.
-  launcher="${HOME}/.local/bin/dawsson-ulauncher"
-  cmd="/usr/bin/ulauncher-toggle"
-  daemon="/usr/bin/ulauncher"
-  if [[ "$DRY_RUN" == "1" ]]; then
-    log "would bind Super+Space to ${launcher} (${cmd}) and clear GNOME's input-source binding"
+enable_vicinae_server() {
+  local unit_found=0
+  if have systemctl; then
+    if systemctl --user cat vicinae.service >/dev/null 2>&1 \
+      || systemctl --user cat vicinae >/dev/null 2>&1; then
+      unit_found=1
+    fi
+  fi
+  if [[ "$unit_found" -eq 1 ]]; then
+    systemctl --user enable --now vicinae.service 2>/dev/null \
+      || systemctl --user enable --now vicinae \
+      || warn "could not enable the vicinae user service"
     return 0
   fi
-  mkdir -p "${HOME}/.local/bin"
-  ln -sfn "${DOTFILES_ROOT}/scripts/ulauncher-show.sh" "$launcher"
-  if have ulauncher; then
-    daemon="$(command -v ulauncher)"
-  fi
-  config="${HOME}/.config/ulauncher/settings.json"
-  # Ulauncher also listens for its own hotkey. On this chord that second
-  # listener closes the window the GNOME shortcut just opened.
-  py set-json "$config" hotkey '<Control><Alt>F12' hotkey-show-app '<Control><Alt>F12' >/dev/null || true
   mkdir -p "${HOME}/.config/autostart"
-  cat > "${HOME}/.config/autostart/ulauncher.desktop" <<EOF
+  cat > "${HOME}/.config/autostart/vicinae.desktop" <<'EOF'
 [Desktop Entry]
 Type=Application
-Name=Ulauncher
+Name=Vicinae
 Comment=Application launcher
-Exec=${daemon} --hide-window
-Icon=ulauncher
+Exec=vicinae server
+Icon=vicinae
 Terminal=false
 X-GNOME-Autostart-enabled=true
 EOF
-  local current merged ulauncher_path
+}
+
+configure_vicinae() {
+  local launcher current merged vicinae_path ulauncher_path
+  # GNOME launches this with a small PATH. An absolute helper path is reliable.
+  launcher="${HOME}/.local/bin/dawsson-vicinae"
+  if [[ "$DRY_RUN" == "1" ]]; then
+    log "would bind Super+Space to ${launcher} (vicinae toggle), enable the vicinae user service, and clear GNOME's input-source binding"
+    return 0
+  fi
+  mkdir -p "${HOME}/.local/bin"
+  ln -sfn "${DOTFILES_ROOT}/scripts/vicinae-show.sh" "$launcher"
+  rm -f "${HOME}/.local/bin/dawsson-ulauncher" \
+    "${HOME}/.config/autostart/ulauncher.desktop"
+  enable_vicinae_server
+  vicinae_path="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vicinae/"
   ulauncher_path="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/ulauncher/"
   gset org.gnome.desktop.wm.keybindings switch-input-source "[]"
   gset org.gnome.desktop.wm.keybindings switch-input-source-backward "[]"
@@ -335,13 +346,13 @@ EOF
   if [[ -z "$current" ]]; then
     current="@as []"
   fi
-  merged="$(py gnome-keybindings "$current" "$ulauncher_path")"
+  merged="$(py gnome-keybindings "$current" "$vicinae_path" --drop "$ulauncher_path")"
   gset org.gnome.settings-daemon.plugins.media-keys custom-keybindings "$merged"
-  gset org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/ulauncher/ \
-    name 'Ulauncher'
-  gset org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/ulauncher/ \
+  gset org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vicinae/ \
+    name 'Vicinae'
+  gset org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vicinae/ \
     command "$launcher"
-  gset org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/ulauncher/ \
+  gset org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vicinae/ \
     binding '<Super>space'
 }
 
@@ -538,8 +549,8 @@ apply_gnome_settings() {
 
 fedora_desktop() {
   section "GNOME"
-  install_ulauncher
-  configure_ulauncher
+  install_vicinae
+  configure_vicinae
   configure_1password_quick_access
   install_keyd
   install_inter_font

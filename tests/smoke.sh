@@ -86,8 +86,16 @@ printf '%s\n' "$fed_plan" | grep -q '1Password extension' || fail "fedora plan m
 printf '%s\n' "$fed_plan" | grep -q 'would bind Shift+Super+Space' || fail "fedora plan missing 1Password Quick Access"
 printf '%s\n' "$fed_plan" | grep -q 'Slack' || fail "fedora plan missing Slack"
 printf '%s\n' "$fed_plan" | grep -q 'Tailscale systray' || fail "fedora plan missing the Tailscale desktop app"
-printf '%s\n' "$fed_plan" | grep -q '/usr/bin/ulauncher-toggle' || fail "fedora plan missing the Ulauncher shortcut command"
-printf '%s\n' "$fed_plan" | grep -q 'dawsson-ulauncher' || fail "fedora plan missing the Ulauncher helper"
+printf '%s\n' "$fed_plan" | grep -q 'vicinae toggle' || fail "fedora plan missing the Vicinae toggle command"
+printf '%s\n' "$fed_plan" | grep -q 'dawsson-vicinae' || fail "fedora plan missing the Vicinae helper"
+grep -qx 'cask "vicinae"' Brewfile.gui || fail "Brewfile.gui missing the Vicinae cask"
+if grep -qx 'cask "raycast"' Brewfile.gui; then
+  fail "Brewfile.gui still installs Raycast"
+fi
+[[ -x scripts/vicinae-show.sh ]] || fail "vicinae helper is not executable"
+if [[ -e scripts/ulauncher-show.sh ]]; then
+  fail "ulauncher helper should have been removed"
+fi
 printf '%s\n' "$fed_plan" | grep -q '.local/bin/dotup' || fail "fedora plan missing the dotup command"
 printf '%s\n' "$fed_plan" | grep -q 'sudo chsh -s' || fail "fedora plan missing sudo chsh"
 printf '%s\n' "$fed_plan" | grep -q 'cpa.env from ~/.bashrc' || fail "fedora plan missing the bashrc CPA fallback"
