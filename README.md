@@ -55,7 +55,7 @@ The bootstrap refuses anything that is not macOS or Fedora. On Fedora it warns a
 | `scripts/link.sh` | Symlinks zsh, git, tmux, starship, mise, Ghostty, the CPA env file, and the keyd app map. Clones tmux plugin manager. |
 | `scripts/macos.sh` | Installs Homebrew if needed, applies `Brewfile` and `Brewfile.gui`, and sets Helium as the default browser with `duti`. |
 | `scripts/fedora.sh` | dnf packages, RPM Fusion, Docker Engine, KVM/libvirt, Cua CLI, and the Linux app installers. |
-| `scripts/gnome.sh` | Ulauncher, keyd, WhiteSur, GNOME extensions, fonts, and `gsettings`. Re-run it from a logged-in GNOME session if the first pass had no session bus. |
+| `scripts/gnome.sh` | Vicinae, keyd (Alt=Command / Super=Option), WhiteSur, GNOME extensions, fonts, and `gsettings`. Re-run it from a logged-in GNOME session if the first pass had no session bus. See `docs/keybindings.md`. |
 | `scripts/runtimes.sh` | Installs [mise](https://mise.jdx.dev) if Homebrew did not, then installs the tools in `dotfiles/mise/config.toml`. |
 | `scripts/agents.sh` | Claude Code, Codex CLI, and the CPA provider block in `~/.codex/config.toml`. |
 | `scripts/pyhelper.py` | Release-asset lookup, Codex config merge, and the Helium MIME default. |
@@ -79,15 +79,36 @@ Configs are symlinks back into this repo, except `~/.codex/config.toml`. That fi
 
 The zshrc still loads keys from files (`~/.codex/config.toml`, `~/.codex/secrets.env`, `~/.codex/cpa.env`). Homebrew, OrbStack, `open`, and `launchctl` run only on macOS. Paths use `$HOME`.
 
+## Shared hotkeys (macOS ↔ Fedora)
+
+On Fedora, **physical Alt = Command** and **Super = Option** (Ctrl stays Control and is never remapped). Full cheat sheet: [`docs/keybindings.md`](docs/keybindings.md).
+
+| Action | macOS | Fedora (physical keys) |
+|--------|-------|------------------------|
+| Launcher (Vicinae) | ⌘Space | Alt+Space |
+| 1Password Quick Access | ⇧⌘Space | Alt+Shift+Space |
+| Copy / Paste / Cut / Undo / Select All | ⌘C/V/X/Z/A | Alt+letter → Ctrl+letter (keyd); physical Ctrl unchanged |
+| Close / Quit | ⌘W / ⌘Q | Alt+W / Alt+Q |
+| App switcher | ⌘Tab | Alt+Tab (hold Alt, Tab cycles) |
+| Cycle windows of app | ⌘\` | Alt+\` |
+| Minimize / Hide | ⌘M / ⌘H | Alt+M / Alt+H |
+| Word jump / delete word | ⌥←/→ / ⌥⌫ | Super+Left/Right / Super+Backspace |
+| Line/doc navigation | ⌘←/→/↑/↓ | Alt+arrows → Home/End/Ctrl+Home/End |
+| Delete to line start | ⌘⌫ | Alt+Backspace |
+| Screenshots | ⇧⌘3 / ⇧⌘4–5 | Alt+Shift+3 / 4 / 5 |
+| Fullscreen / Lock | ⌃⌘F / ⌃⌘Q | Ctrl+Alt+F / Ctrl+Alt+Q |
+| Terminal copy/paste | ⌘C/V | **Ctrl+C/V** (interrupt is **Alt+C**) |
+| Overview / Mission Control | Mission Control | Super tap |
+
 ## macOS only
 
 Homebrew, then the curated casks in `Brewfile.gui`:
 
 - OrbStack, instead of Docker Desktop
-- Raycast, Rectangle, Shottr, AlDente
+- Vicinae (Homebrew cask; Apple Silicon, macOS 14+), Rectangle, Shottr, AlDente
 - Tailscale.app, which also provides the `tailscale` CLI
 
-`--skip-gui` installs the `tailscale` formula instead of the app. The first time Raycast opens, let it take Command-Space.
+`--skip-gui` installs the `tailscale` formula instead of the app. The first time Vicinae opens, complete onboarding and let it take Command-Space.
 
 ## Fedora only
 
@@ -99,12 +120,12 @@ Homebrew, then the curated casks in `Brewfile.gui`:
 - Flatpak (Flathub) for Legcord, Slack, Spotify, and Obsidian
 - Cursor's yum repo, Google Chrome's rpm, Helium from the `imput/helium` COPR, Ghostty from the `scottames/ghostty` COPR (the repo Ghostty's install docs use; Fedora itself does not ship it), Grok Bot from Cursor's Linux rpm feed
 - T3 Code Nightly from the current GitHub release. An rpm is used when that nightly published one; otherwise the x86_64 AppImage is installed to `~/.local/opt/t3-code/`
-- Ulauncher on Super+Space. keyd sends a real Super+Space chord, the same way Shift+Super+Space already reaches 1Password, and GNOME binds `<Super>space` to `~/.local/bin/dawsson-ulauncher`. That helper starts Ulauncher if this login has not launched it yet, then toggles the window. Ulauncher's own hotkey is a different chord, so the same press cannot open the window and close it again. GNOME's Super+Space input-source shortcut is cleared. If `ulauncher` is not in the Fedora repos, the script enables the `troycurtisjr/ulauncher` COPR
+- Vicinae on Alt+Space. Install prefers COPR `quadratech188/vicinae`, then `curl -fsSL https://vicinae.com/install | bash`. keyd turns Alt+Space into Super+Space; GNOME binds that to `~/.local/bin/dawsson-vicinae` (`vicinae toggle`). GNOME's input-source Super+Space binding is cleared. Prior Ulauncher shortcuts are removed on re-run
 - Tailscale CLI from the official install script, plus the systray desktop app (`tailscale systray`) at login. `--skip-gui` leaves the CLI only. The tray icon needs the AppIndicator extension, which this script enables
 - Dash to Dock on the bottom, always visible (`autohide` left off). Window buttons on the left: close, minimize, maximize
 - WhiteSur GTK, icon, and cursor themes, Inter, and JetBrainsMono Nerd Font
 - Natural scrolling and tap-to-click
-- keyd from the `alternateved/keyd` COPR (upstream's Fedora package; it is not in the Fedora repos). Holding Super sends the usual Command chords (copy, paste, cut, undo, select-all, and the rest of the Control-letter keys). Super+W is Close, the same idea as Command+W: it sends Ctrl+W, which closes the current tab or window and leaves the app running when the app does that (a browser stays open after a tab closes). It does not minimize and it does not send Alt+F4. Super+Q is Quit (Ctrl+Q), the same idea as Command+Q. In a terminal those two become Ctrl+Shift+W and Ctrl+Shift+Q, so a tab closes and the terminal stays open when another tab is left, while Ctrl+W can still delete a word. Super+Space opens Ulauncher. Shift+Super+Space opens 1Password Quick Access (`1password --quick-access`), the same chord as Shift+Command+Space on the Mac. A tap of Super still opens the overview. Terminals are remapped through `keyd-application-mapper` when that helper is installed. Running the bootstrap again restarts keyd, docker, libvirtd, and tailscaled when those services are already running, and restarts the application mapper when that user service is running
+- keyd from the `alternateved/keyd` COPR plus `configure_macos_hotkeys` in `scripts/gnome.sh` so the [shared map](#shared-hotkeys-macos--fedora) matches. Physical Ctrl is never remapped. `keyd-application-mapper` is enabled as a user service and GNOME autostart entry for terminal overrides. Re-running bootstrap restarts keyd and the mapper when they are already running
 - Packaged GNOME extensions: Dash to Dock, AppIndicator, user themes (`gnome-shell-extension-user-theme`), and Blur My Shell. If the Blur My Shell package is missing, the script falls back to `gnome-extensions-cli`
 
 Log out and back in after the first Fedora run so the new groups, keyd, and GNOME extensions apply. If the dock or hotkey did not stick, open a terminal inside the graphical session and run `./scripts/gnome.sh`.
@@ -145,7 +166,7 @@ There is no `/v1` on that base URL. Whether CPA actually exposes an Anthropic-co
 
 A normal run ends by asking, in this order: 1Password, Tailscale, GitHub, the CPA key, then Cua on Fedora. Steps that are already done are skipped. `curl | bash` still prompts, because the questions are read from the terminal. `--skip-setup` installs software and leaves sign-in for later. `./bootstrap.sh --setup` runs only the questions.
 
-1Password comes first so the CLI can read the CPA item. Turn on Settings → Developer → Integrate with 1Password CLI. On the Mac, Shift+Command+Space is the app's Quick Access shortcut. On Fedora, Wayland does not let 1Password register that shortcut itself, so GNOME binds Shift+Super+Space to `1password --quick-access`.
+1Password comes first so the CLI can read the CPA item. Turn on Settings → Developer → Integrate with 1Password CLI. On the Mac, Shift+Command+Space is the app's Quick Access shortcut. On Fedora, Wayland does not let 1Password register that shortcut itself, so you press Alt+Shift+Space; keyd emits Shift+Super+Space and GNOME runs `1password --quick-access`.
 
 GitHub sign-in is `gh auth login --hostname github.com --git-protocol https --web`. Git's user name and email come from the linked gitconfig. HTTPS clones of GitHub and gists use `gh auth git-credential`, which is already in that file. `gh auth setup-git` is not used: it writes the same helpers with `git config --global`, and that would edit the symlinked gitconfig in this repo.
 
@@ -167,7 +188,7 @@ The Linux extension file lives in `/usr/share/chromium/extensions`, which is the
 5. Sign in to Cursor, Grok Bot, T3 Code Nightly, and Slack.
 6. On Fedora, run `cua auth login` if the prompt was skipped. The Spaces app is not part of this install.
 7. On Fedora, log out and back in. Confirm `groups` contains `docker` and `libvirt`.
-8. On the Mac, accept Raycast's prompt for Command-Space. OrbStack is the Docker runtime; Docker Desktop is not installed.
+8. On the Mac, finish Vicinae's onboarding and accept its prompt for Command-Space. OrbStack is the Docker runtime; Docker Desktop is not installed.
 9. Helium should be the default browser, with the 1Password extension registered. Chrome stays installed.
 
 ## Not installed
@@ -192,6 +213,6 @@ A Fedora 44 container can execute the Fedora dry-run and `dnf` package-name chec
 - Grok Bot publishes Linux builds (deb, rpm, and AppImage). Fedora installs the rpm from the official stable feed at `https://api2.cursor.sh/updates/api/download/stable/linux-x64/sand`. There is no separate web-app fallback.
 - T3 Code Nightly publishes a Linux desktop build. The release checked while writing this repo had an x86_64 AppImage and a deb, and no rpm. The script prefers an rpm when a nightly includes one, and otherwise installs the AppImage. The terminal installer at `https://t3.codes/install.sh` is a different entry point; this bootstrap installs the desktop app.
 - The Claude Code CPA opt-in assumes an Anthropic-compatible API on the same host. That has not been verified.
-- keyd's terminal override depends on the window class. If Ghostty copy is still Ctrl+C, add the class reported by the application mapper to `dotfiles/keyd/app.conf`.
-- WhiteSur, Dash to Dock, and Ulauncher's shortcut need a graphical login. `./scripts/gnome.sh` applies them again.
-- Ulauncher's Fedora package moves. The script tries the distro package, then the `troycurtisjr/ulauncher` COPR.
+- keyd's terminal override depends on the window class. If Alt+C does not interrupt in a terminal, add the class from `keyd-application-mapper -v` to `dotfiles/keyd/app.conf`.
+- WhiteSur, Dash to Dock, and Vicinae's shortcut need a graphical login. `./scripts/gnome.sh` applies them again.
+- Vicinae on Fedora comes from the `quadratech188/vicinae` COPR when available, otherwise https://vicinae.com/install.

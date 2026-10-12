@@ -86,17 +86,57 @@ printf '%s\n' "$fed_plan" | grep -q '1Password extension' || fail "fedora plan m
 printf '%s\n' "$fed_plan" | grep -q 'would bind Shift+Super+Space' || fail "fedora plan missing 1Password Quick Access"
 printf '%s\n' "$fed_plan" | grep -q 'Slack' || fail "fedora plan missing Slack"
 printf '%s\n' "$fed_plan" | grep -q 'Tailscale systray' || fail "fedora plan missing the Tailscale desktop app"
-printf '%s\n' "$fed_plan" | grep -q '/usr/bin/ulauncher-toggle' || fail "fedora plan missing the Ulauncher shortcut command"
-printf '%s\n' "$fed_plan" | grep -q 'dawsson-ulauncher' || fail "fedora plan missing the Ulauncher helper"
+printf '%s\n' "$fed_plan" | grep -q 'vicinae toggle' || fail "fedora plan missing the Vicinae toggle command"
+printf '%s\n' "$fed_plan" | grep -q 'dawsson-vicinae' || fail "fedora plan missing the Vicinae helper"
+printf '%s\n' "$fed_plan" | grep -q 'mirror macOS hotkeys' || fail "fedora plan missing macOS hotkey mirroring"
+printf '%s\n' "$fed_plan" | grep -q 'Alt-as-Command' || fail "fedora plan missing Alt-as-Command keyd map"
+printf '%s\n' "$fed_plan" | grep -q 'terminal Ctrl+C/V' || fail "fedora plan missing terminal Ctrl+C/V copy/paste"
+printf '%s\n' "$fed_plan" | grep -q 'Force Quit' || fail "fedora plan missing Force Quit binding"
 printf '%s\n' "$fed_plan" | grep -q '.local/bin/dotup' || fail "fedora plan missing the dotup command"
 printf '%s\n' "$fed_plan" | grep -q 'sudo chsh -s' || fail "fedora plan missing sudo chsh"
 printf '%s\n' "$fed_plan" | grep -q 'cpa.env from ~/.bashrc' || fail "fedora plan missing the bashrc CPA fallback"
 printf '%s\n' "$fed_plan" | grep -q 'op://Personal/Devbox CPA client key/credential' || fail "fedora plan missing the default CPA reference"
 printf '%s\n' "$fed_plan" | grep -q 'restart managed services' || fail "fedora plan missing service refresh"
-grep -q 'w = macro(leftcontrol+w)' dotfiles/keyd/default.conf || fail "Super+W is not close"
-grep -q 'q = macro(leftcontrol+q)' dotfiles/keyd/default.conf || fail "Super+Q is not quit"
-grep -q 'space = macro(leftmeta+space)' dotfiles/keyd/default.conf || fail "Super+Space is not a real Super chord"
-grep -q 'cmd.w = C-S-w' dotfiles/keyd/app.conf || fail "terminal Super+W is not close-tab"
+grep -qx 'cask "vicinae"' Brewfile.gui || fail "Brewfile.gui missing the Vicinae cask"
+if grep -qx 'cask "raycast"' Brewfile.gui; then
+  fail "Brewfile.gui still installs Raycast"
+fi
+grep -q 'leftalt = layer(cmd)' dotfiles/keyd/default.conf || fail "physical Alt is not Command"
+grep -q 'leftmeta = overload(opt' dotfiles/keyd/default.conf || fail "physical Super is not Option"
+grep -q 'space = macro(leftmeta+space)' dotfiles/keyd/default.conf || fail "Alt+Space does not emit Super+Space for the launcher"
+grep -q 'w = C-w' dotfiles/keyd/default.conf || fail "Alt+W is not close"
+grep -q 'q = C-q' dotfiles/keyd/default.conf || fail "Alt+Q is not quit"
+grep -q 'tab = swapm(appswitch' dotfiles/keyd/default.conf || fail "Alt+Tab app switcher missing"
+grep -q 'backspace = macro(S-home, backspace)' dotfiles/keyd/default.conf || fail "Alt+Backspace is not delete-to-line-start"
+grep -q '\[opt\]' dotfiles/keyd/default.conf || fail "Option layer missing"
+grep -q 'left = C-left' dotfiles/keyd/default.conf || fail "Super+Left word jump missing"
+grep -q '3 = macro(leftshift+leftmeta+3)' dotfiles/keyd/default.conf || fail "Alt+Shift+3 screenshot chord missing"
+grep -q 'q = macro(leftmeta+l)' dotfiles/keyd/default.conf || fail "Ctrl+Alt+Q lock chord missing"
+grep -q 'cmd.c = C-S-c' dotfiles/keyd/app.conf || fail "terminal Alt+C is not interrupt"
+grep -q 'cmd.w = C-S-w' dotfiles/keyd/app.conf || fail "terminal Alt+W is not close-tab"
+grep -q 'performable:ctrl+c=copy_to_clipboard' dotfiles/ghostty/config \
+  || fail "Ghostty Ctrl+C should copy when performable"
+grep -qF 'ctrl+shift+c=text:\x03' dotfiles/ghostty/config \
+  || fail "Ghostty Ctrl+Shift+C should send SIGINT for Alt+C"
+grep -q 'shell-integration-features = ssh-terminfo,ssh-env' dotfiles/ghostty/config \
+  || fail "Ghostty config missing SSH terminfo/env features for paste/remote"
+grep -q '^dss()' dotfiles/zsh/.zshrc || fail "desktop SSH helper should be named dss()"
+grep -q 'ghostty +ssh' dotfiles/zsh/.zshrc || fail "dss() should prefer ghostty +ssh"
+if grep -qE '^dx\(\)|^alias dx=|function dx' dotfiles/zsh/.zshrc; then
+  fail "zshrc still defines dx as a shell function/alias (reserved for status CLI)"
+fi
+[[ -x scripts/vicinae-show.sh ]] || fail "vicinae helper is not executable"
+[[ -x scripts/force-quit.sh ]] || fail "force-quit helper is not executable"
+[[ -f docs/keybindings.md ]] || fail "docs/keybindings.md cheat sheet missing"
+grep -q 'Left/Right Alt' docs/keybindings.md || fail "keybindings doc missing Alt=Command model"
+grep -q 'Super / Win' docs/keybindings.md || fail "keybindings doc missing Super=Option model"
+if [[ -e scripts/ulauncher-show.sh ]]; then
+  fail "ulauncher helper should have been removed"
+fi
+# Ctrl must not be remapped in the global keyd map.
+if grep -E '^(left|right)?control\s*=' dotfiles/keyd/default.conf; then
+  fail "keyd must not remap physical Ctrl"
+fi
 grep -q 'dotup()' dotfiles/zsh/.zshrc || fail "zshrc missing dotup"
 [[ -x scripts/dotup.sh ]] || fail "dotup command is not executable"
 if printf '%s\n' "$skip_plan" | grep -q 'Tailscale systray'; then

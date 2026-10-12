@@ -229,7 +229,20 @@ nkx() {
   _nx_load_nvidia_key
   codex --profile nvidia-kimi --remote ws://127.0.0.1:8765 --cd "$PWD" --dangerously-bypass-approvals-and-sandbox "$@"
 }
-dx() { ssh dawson@desktop "$@"; }
+# SSH to the desktop (dss = desktop ssh). Prefer Ghostty's +ssh so remote
+# terminfo/paste works; otherwise fall back to xterm-256color when this shell
+# still has a Ghostty TERM (avoids bracketed-paste junk like 200~ / ^[[200~
+# on remotes without terminfo). Named dss so the status CLI can own `dx`.
+dss() {
+  if [[ "${TERM_PROGRAM:-}" == "ghostty" ]] && command -v ghostty >/dev/null 2>&1; then
+    ghostty +ssh -- dawson@desktop "$@"
+    return
+  fi
+  case "${TERM:-}" in
+    *ghostty*) TERM=xterm-256color ssh dawson@desktop "$@" ;;
+    *) ssh dawson@desktop "$@" ;;
+  esac
+}
 nbrew() { command nb "$@"; }
 
 if [[ "$(uname -s)" == "Darwin" ]]; then

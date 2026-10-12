@@ -221,6 +221,9 @@ def cmd_gnome_keybindings(args):
         items = []
     else:
         items = ast.literal_eval(raw)
+    drop = set(args.drop or [])
+    if drop:
+        items = [item for item in items if item not in drop]
     if args.path not in items:
         items.append(args.path)
     print("[" + ", ".join("'{0}'".format(item) for item in items) + "]")
@@ -306,6 +309,7 @@ def main():
     keys = sub.add_parser("gnome-keybindings")
     keys.add_argument("current")
     keys.add_argument("path")
+    keys.add_argument("--drop", action="append", default=[])
     keys.set_defaults(func=cmd_gnome_keybindings)
 
     browser = sub.add_parser("set-default-browser")

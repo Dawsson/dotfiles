@@ -282,52 +282,63 @@ fedora_gui() {
   enable_tailscale_systray
 }
 
-install_ulauncher() {
+install_vicinae() {
   if [[ "$DRY_RUN" == "1" ]]; then
-    log "would install Ulauncher and bind it to Super+Space"
+    log "would install Vicinae (COPR quadratech188/vicinae, else https://vicinae.com/install) and bind Alt+Space to vicinae toggle"
     return 0
   fi
-  if ! rpm -q ulauncher >/dev/null 2>&1 || ! rpm -q wmctrl >/dev/null 2>&1; then
-    sudo dnf install -y ulauncher wmctrl || {
-      warn "ulauncher is not in the Fedora repos; trying the troycurtisjr/ulauncher COPR"
-      enable_copr troycurtisjr/ulauncher || warn "could not enable the Ulauncher COPR"
-      sudo dnf install -y ulauncher wmctrl || warn "Ulauncher was not installed"
-    }
+  if have vicinae || rpm -q vicinae >/dev/null 2>&1; then
+    return 0
   fi
+  enable_copr quadratech188/vicinae || warn "could not enable the Vicinae COPR"
+  if sudo dnf install -y vicinae; then
+    return 0
+  fi
+  warn "Vicinae COPR package was not installed; trying the official install script"
+  curl -fsSL https://vicinae.com/install | bash || warn "Vicinae was not installed"
 }
 
-configure_ulauncher() {
-  local config cmd daemon launcher
-  # GNOME launches this with a small PATH. An absolute path is the reliable form.
-  # The helper starts the daemon, then toggles, so the first press still opens.
-  launcher="${HOME}/.local/bin/dawsson-ulauncher"
-  cmd="/usr/bin/ulauncher-toggle"
-  daemon="/usr/bin/ulauncher"
-  if [[ "$DRY_RUN" == "1" ]]; then
-    log "would bind Super+Space to ${launcher} (${cmd}) and clear GNOME's input-source binding"
+enable_vicinae_server() {
+  local unit_found=0
+  if have systemctl; then
+    if systemctl --user cat vicinae.service >/dev/null 2>&1 \
+      || systemctl --user cat vicinae >/dev/null 2>&1; then
+      unit_found=1
+    fi
+  fi
+  if [[ "$unit_found" -eq 1 ]]; then
+    systemctl --user enable --now vicinae.service 2>/dev/null \
+      || systemctl --user enable --now vicinae \
+      || warn "could not enable the vicinae user service"
     return 0
   fi
-  mkdir -p "${HOME}/.local/bin"
-  ln -sfn "${DOTFILES_ROOT}/scripts/ulauncher-show.sh" "$launcher"
-  if have ulauncher; then
-    daemon="$(command -v ulauncher)"
-  fi
-  config="${HOME}/.config/ulauncher/settings.json"
-  # Ulauncher also listens for its own hotkey. On this chord that second
-  # listener closes the window the GNOME shortcut just opened.
-  py set-json "$config" hotkey '<Control><Alt>F12' hotkey-show-app '<Control><Alt>F12' >/dev/null || true
   mkdir -p "${HOME}/.config/autostart"
-  cat > "${HOME}/.config/autostart/ulauncher.desktop" <<EOF
+  cat > "${HOME}/.config/autostart/vicinae.desktop" <<'EOF'
 [Desktop Entry]
 Type=Application
-Name=Ulauncher
+Name=Vicinae
 Comment=Application launcher
-Exec=${daemon} --hide-window
-Icon=ulauncher
+Exec=vicinae server
+Icon=vicinae
 Terminal=false
 X-GNOME-Autostart-enabled=true
 EOF
-  local current merged ulauncher_path
+}
+
+configure_vicinae() {
+  local launcher current merged vicinae_path ulauncher_path
+  # GNOME hears Super+Space; keyd turns physical Alt+Space into that chord.
+  launcher="${HOME}/.local/bin/dawsson-vicinae"
+  if [[ "$DRY_RUN" == "1" ]]; then
+    log "would bind Super+Space (physical Alt+Space via keyd) to ${launcher} (vicinae toggle), enable the vicinae user service, and clear GNOME's input-source binding"
+    return 0
+  fi
+  mkdir -p "${HOME}/.local/bin"
+  ln -sfn "${DOTFILES_ROOT}/scripts/vicinae-show.sh" "$launcher"
+  rm -f "${HOME}/.local/bin/dawsson-ulauncher" \
+    "${HOME}/.config/autostart/ulauncher.desktop"
+  enable_vicinae_server
+  vicinae_path="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vicinae/"
   ulauncher_path="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/ulauncher/"
   gset org.gnome.desktop.wm.keybindings switch-input-source "[]"
   gset org.gnome.desktop.wm.keybindings switch-input-source-backward "[]"
@@ -335,13 +346,13 @@ EOF
   if [[ -z "$current" ]]; then
     current="@as []"
   fi
-  merged="$(py gnome-keybindings "$current" "$ulauncher_path")"
+  merged="$(py gnome-keybindings "$current" "$vicinae_path" --drop "$ulauncher_path")"
   gset org.gnome.settings-daemon.plugins.media-keys custom-keybindings "$merged"
-  gset org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/ulauncher/ \
-    name 'Ulauncher'
-  gset org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/ulauncher/ \
+  gset org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vicinae/ \
+    name 'Vicinae'
+  gset org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vicinae/ \
     command "$launcher"
-  gset org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/ulauncher/ \
+  gset org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vicinae/ \
     binding '<Super>space'
 }
 
@@ -349,7 +360,7 @@ configure_1password_quick_access() {
   local current merged path
   path="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/1password-quick-access/"
   if [[ "$DRY_RUN" == "1" ]]; then
-    log "would bind Shift+Super+Space to 1password --quick-access"
+    log "would bind Shift+Super+Space (physical Alt+Shift+Space via keyd) to 1password --quick-access"
     return 0
   fi
   current="$(gsettings get org.gnome.settings-daemon.plugins.media-keys custom-keybindings 2>/dev/null || true)"
@@ -366,10 +377,90 @@ configure_1password_quick_access() {
     binding '<Shift><Super>space'
 }
 
-install_keyd() {
-  local mapper unit
+configure_force_quit() {
+  local current merged path helper
+  path="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/force-quit/"
+  helper="${HOME}/.local/bin/dawsson-force-quit"
   if [[ "$DRY_RUN" == "1" ]]; then
-    log "would enable the alternateved/keyd COPR and apply the Super-as-Command map"
+    log "would bind Force Quit (Ctrl+Shift+Escape; physical Alt+Super+Esc via keyd) to ${helper}"
+    return 0
+  fi
+  mkdir -p "${HOME}/.local/bin"
+  ln -sfn "${DOTFILES_ROOT}/scripts/force-quit.sh" "$helper"
+  current="$(gsettings get org.gnome.settings-daemon.plugins.media-keys custom-keybindings 2>/dev/null || true)"
+  if [[ -z "$current" ]]; then
+    current="@as []"
+  fi
+  merged="$(py gnome-keybindings "$current" "$path")"
+  gset org.gnome.settings-daemon.plugins.media-keys custom-keybindings "$merged"
+  gset org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/force-quit/ \
+    name 'Force Quit'
+  gset org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/force-quit/ \
+    command "$helper"
+  gset org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/force-quit/ \
+    binding '<Primary><Shift>Escape'
+}
+
+# Physical Alt = Command, Super = Option. keyd emits Super/Alt chords GNOME hears.
+configure_macos_hotkeys() {
+  if [[ "$DRY_RUN" == "1" ]]; then
+    log "would mirror macOS hotkeys (Alt=Command, Super=Option): Alt+Tab app switch, Super+M/H minimize, Super+\` window group, Shift+Super+3/4/5 screenshots, Super+L lock"
+    return 0
+  fi
+  # Cmd+Tab → keyd emits Alt+Tab and keeps Alt held while Tab cycles.
+  gset org.gnome.desktop.wm.keybindings switch-applications "['<Alt>Tab']"
+  gset org.gnome.desktop.wm.keybindings switch-applications-backward "['<Shift><Alt>Tab']"
+  gset org.gnome.desktop.wm.keybindings switch-windows "[]"
+  gset org.gnome.desktop.wm.keybindings switch-windows-backward "[]"
+  # Cmd+` cycles windows of the same app (keyd emits Super+grave).
+  gset org.gnome.desktop.wm.keybindings switch-group "['<Super>grave']"
+  gset org.gnome.desktop.wm.keybindings switch-group-backward "['<Shift><Super>grave']"
+  # Cmd+M minimize; Cmd+H hide ≈ minimize on GNOME.
+  gset org.gnome.desktop.wm.keybindings minimize "['<Super>m', '<Super>h']"
+  # Close/quit stay keyd → Ctrl+W / Ctrl+Q (not WM Alt+F4 as Command+W).
+  gset org.gnome.desktop.wm.keybindings close "['<Alt>F4']"
+  # Cmd+Ctrl+F fullscreen; keep F11.
+  gset org.gnome.desktop.wm.keybindings toggle-fullscreen "['<Primary><Super>f', 'F11']"
+  # Screenshots: Cmd+Shift+3 full, +4 area UI, +5 screenshot UI.
+  gset org.gnome.shell.keybindings screenshot "['<Shift><Super>3']"
+  gset org.gnome.shell.keybindings show-screenshot-ui "['<Shift><Super>4', '<Shift><Super>5', 'Print']"
+  gset org.gnome.shell.keybindings screenshot-window "['<Alt>Print']"
+  # Ctrl+Cmd+Q → keyd emits Super+L.
+  gset org.gnome.settings-daemon.plugins.media-keys screensaver "['<Super>l']"
+  # Overview stays a Super tap. Clear Super+A show-apps so it cannot fight Select All.
+  gset org.gnome.shell.keybindings toggle-application-view "[]"
+  # Alt is Command now; move window-drag modifier off Alt onto Super.
+  gset org.gnome.desktop.wm.preferences mouse-button-modifier '<Super>'
+}
+
+configure_terminal_copy_paste() {
+  local schema
+  if [[ "$DRY_RUN" == "1" ]]; then
+    log "would set terminal Ctrl+C/V to copy/paste (Ghostty performable; GNOME Terminal/Ptyxis Primary+c/v)"
+    return 0
+  fi
+  # GNOME Terminal: Ctrl+C/V copy/paste like GUI apps. Unbind the old Shift variants
+  # from copy/paste so keyd can use Ctrl+Shift+C for interrupt (Alt+C).
+  schema='org.gnome.Terminal.Legacy.Keybindings:/org/gnome/terminal/legacy/keybindings/'
+  if gsettings list-relocatable-schemas 2>/dev/null | grep -qx 'org.gnome.Terminal.Legacy.Keybindings'; then
+    gset "${schema}" copy '<Primary>c'
+    gset "${schema}" paste '<Primary>v'
+    gset "${schema}" new-tab '<Primary><Shift>t'
+    gset "${schema}" new-window '<Primary><Shift>n'
+    gset "${schema}" close-tab '<Primary><Shift>w'
+    gset "${schema}" close-window '<Primary><Shift>q'
+  fi
+  # Ptyxis schemas differ by version; best-effort only.
+  if gsettings list-schemas 2>/dev/null | grep -qx 'org.gnome.Ptyxis.Keybindings'; then
+    gset org.gnome.Ptyxis.Keybindings copy '<Primary>c'
+    gset org.gnome.Ptyxis.Keybindings paste '<Primary>v'
+  fi
+}
+
+install_keyd() {
+  local mapper unit desktop
+  if [[ "$DRY_RUN" == "1" ]]; then
+    log "would enable the alternateved/keyd COPR and apply the Alt-as-Command / Super-as-Option map"
     return 0
   fi
   # keyd is not in Fedora. Upstream documents the alternateved COPR.
@@ -396,7 +487,7 @@ install_keyd() {
     mapper=""
   done
   if [[ -z "$mapper" ]]; then
-    warn "keyd-application-mapper was not found. The global Super map is still installed."
+    warn "keyd-application-mapper was not found. The global Alt/Super map is still installed."
     return 0
   fi
   unit="${HOME}/.config/systemd/user/keyd-application-mapper.service"
@@ -414,6 +505,19 @@ RestartSec=2
 
 [Install]
 WantedBy=graphical-session.target
+EOF
+  # Autostart desktop entry so the mapper runs in a GNOME session even when the
+  # systemd user graphical-session target did not pull it in.
+  desktop="${HOME}/.config/autostart/keyd-application-mapper.desktop"
+  mkdir -p "$(dirname "$desktop")"
+  cat > "$desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=keyd application mapper
+Comment=Per-app keyd bindings (terminal Cmd+C interrupt, etc.)
+Exec=${mapper} -d
+Terminal=false
+X-GNOME-Autostart-enabled=true
 EOF
   if systemd_active && [[ -n "${XDG_RUNTIME_DIR:-}" ]]; then
     systemctl --user daemon-reload || true
@@ -538,9 +642,12 @@ apply_gnome_settings() {
 
 fedora_desktop() {
   section "GNOME"
-  install_ulauncher
-  configure_ulauncher
+  install_vicinae
+  configure_vicinae
   configure_1password_quick_access
+  configure_force_quit
+  configure_macos_hotkeys
+  configure_terminal_copy_paste
   install_keyd
   install_inter_font
   install_whitesur
