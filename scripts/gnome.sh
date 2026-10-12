@@ -377,6 +377,37 @@ configure_1password_quick_access() {
     binding '<Shift><Super>space'
 }
 
+# Mirror the macOS chords this repo targets (Command = Super via keyd).
+# keyd turns Super+Tab into Alt+Tab and keeps Super+M/H/`/Shift+digit as Super.
+configure_macos_hotkeys() {
+  if [[ "$DRY_RUN" == "1" ]]; then
+    log "would mirror macOS hotkeys: Alt+Tab app switch, Super+M/H minimize, Super+\` window group, Shift+Super+3/4/5 screenshots"
+    return 0
+  fi
+  # Cmd+Tab → keyd emits Alt+Tab; make that switch applications (macOS behavior).
+  gset org.gnome.desktop.wm.keybindings switch-applications "['<Alt>Tab']"
+  gset org.gnome.desktop.wm.keybindings switch-applications-backward "['<Shift><Alt>Tab']"
+  # Prefer app switcher over window switcher for Alt+Tab.
+  gset org.gnome.desktop.wm.keybindings switch-windows "[]"
+  gset org.gnome.desktop.wm.keybindings switch-windows-backward "[]"
+  # Cmd+` cycles windows of the same app.
+  gset org.gnome.desktop.wm.keybindings switch-group "['<Super>grave']"
+  gset org.gnome.desktop.wm.keybindings switch-group-backward "['<Shift><Super>grave']"
+  # Cmd+M minimize; Cmd+H hide ≈ minimize on GNOME.
+  gset org.gnome.desktop.wm.keybindings minimize "['<Super>m', '<Super>h']"
+  # Leave close/quit to keyd (Ctrl+W / Ctrl+Q) rather than Super+W as a WM binding.
+  gset org.gnome.desktop.wm.keybindings close "['<Alt>F4']"
+  # Cmd+Ctrl+F fullscreen (macOS); keep F11 too.
+  gset org.gnome.desktop.wm.keybindings toggle-fullscreen "['<Primary><Super>f', 'F11']"
+  # Screenshots: Cmd+Shift+3 full, +4 UI/area, +5 UI (macOS-style).
+  gset org.gnome.shell.keybindings screenshot "['<Shift><Super>3']"
+  gset org.gnome.shell.keybindings show-screenshot-ui "['<Shift><Super>4', '<Shift><Super>5', 'Print']"
+  gset org.gnome.shell.keybindings screenshot-window "['<Alt>Print']"
+  # Overview stays a Super tap (mutter overlay-key). Clear Super+A show-apps so it
+  # cannot fight Cmd+A Select All if the Super chord ever reaches GNOME.
+  gset org.gnome.shell.keybindings toggle-application-view "[]"
+}
+
 install_keyd() {
   local mapper unit
   if [[ "$DRY_RUN" == "1" ]]; then
@@ -552,6 +583,7 @@ fedora_desktop() {
   install_vicinae
   configure_vicinae
   configure_1password_quick_access
+  configure_macos_hotkeys
   install_keyd
   install_inter_font
   install_whitesur

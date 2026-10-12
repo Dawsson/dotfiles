@@ -88,7 +88,13 @@ printf '%s\n' "$fed_plan" | grep -q 'Slack' || fail "fedora plan missing Slack"
 printf '%s\n' "$fed_plan" | grep -q 'Tailscale systray' || fail "fedora plan missing the Tailscale desktop app"
 printf '%s\n' "$fed_plan" | grep -q 'vicinae toggle' || fail "fedora plan missing the Vicinae toggle command"
 printf '%s\n' "$fed_plan" | grep -q 'dawsson-vicinae' || fail "fedora plan missing the Vicinae helper"
+printf '%s\n' "$fed_plan" | grep -q 'mirror macOS hotkeys' || fail "fedora plan missing macOS hotkey mirroring"
 grep -qx 'cask "vicinae"' Brewfile.gui || fail "Brewfile.gui missing the Vicinae cask"
+grep -q 'shell-integration-features = ssh-terminfo,ssh-env' dotfiles/ghostty/config \
+  || fail "Ghostty config missing SSH terminfo/env features for paste/remote"
+grep -q 'ghostty +ssh' dotfiles/zsh/.zshrc || fail "dx() should prefer ghostty +ssh"
+grep -q 'm = macro(leftmeta+m)' dotfiles/keyd/default.conf || fail "Super+M is not minimize"
+grep -q '3 = macro(leftshift+leftmeta+3)' dotfiles/keyd/default.conf || fail "Shift+Super+3 screenshot chord missing"
 if grep -qx 'cask "raycast"' Brewfile.gui; then
   fail "Brewfile.gui still installs Raycast"
 fi

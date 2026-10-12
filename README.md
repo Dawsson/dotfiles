@@ -79,6 +79,28 @@ Configs are symlinks back into this repo, except `~/.codex/config.toml`. That fi
 
 The zshrc still loads keys from files (`~/.codex/config.toml`, `~/.codex/secrets.env`, `~/.codex/cpa.env`). Homebrew, OrbStack, `open`, and `launchctl` run only on macOS. Paths use `$HOME`.
 
+## Shared hotkeys (macOS ↔ Fedora)
+
+On Fedora, keyd puts Super in the Command position and `scripts/gnome.sh` mirrors the macOS chords this repo targets. Command on macOS ≈ Super on Fedora.
+
+| Action | macOS | Fedora |
+|--------|-------|--------|
+| Launcher (Vicinae) | ⌘Space | Super+Space |
+| 1Password Quick Access | ⇧⌘Space | Shift+Super+Space |
+| Copy / Paste / Cut / Undo / Select All | ⌘C / ⌘V / ⌘X / ⌘Z / ⌘A | Super+letter → Ctrl+letter (keyd) |
+| Close tab/window | ⌘W | Super+W → Ctrl+W (terminals: Ctrl+Shift+W) |
+| Quit app | ⌘Q | Super+Q → Ctrl+Q (terminals: Ctrl+Shift+Q) |
+| App switcher | ⌘Tab | Super+Tab → Alt+Tab |
+| Cycle windows of app | ⌘\` | Super+\` |
+| Minimize / Hide | ⌘M / ⌘H | Super+M / Super+H → minimize |
+| Line/doc navigation | ⌘←/→/↑/↓ | Home / End / Ctrl+Home / Ctrl+End |
+| Delete previous word | ⌘⌫ | Ctrl+Backspace |
+| Screenshot full / UI | ⇧⌘3 / ⇧⌘4–5 | Shift+Super+3 / Shift+Super+4–5 |
+| Fullscreen | ⌃⌘F | Ctrl+Super+F |
+| Overview / Mission Control | Mission Control | Super tap (GNOME overview) |
+
+Gaps that cannot match cleanly: macOS Force Quit (⌥⌘Esc), Rectangle window tiling (Mac-only cask here), and OS-reserved chords. Ghostty uses Ctrl+Shift+C/V for copy/paste in the terminal on both OSes. SSH from Ghostty enables `ssh-terminfo` / `ssh-env` so remotes do not show paste junk like `200~`.
+
 ## macOS only
 
 Homebrew, then the curated casks in `Brewfile.gui`:
@@ -104,7 +126,7 @@ Homebrew, then the curated casks in `Brewfile.gui`:
 - Dash to Dock on the bottom, always visible (`autohide` left off). Window buttons on the left: close, minimize, maximize
 - WhiteSur GTK, icon, and cursor themes, Inter, and JetBrainsMono Nerd Font
 - Natural scrolling and tap-to-click
-- keyd from the `alternateved/keyd` COPR (upstream's Fedora package; it is not in the Fedora repos). Holding Super sends the usual Command chords (copy, paste, cut, undo, select-all, and the rest of the Control-letter keys). Super+W is Close, the same idea as Command+W: it sends Ctrl+W, which closes the current tab or window and leaves the app running when the app does that (a browser stays open after a tab closes). It does not minimize and it does not send Alt+F4. Super+Q is Quit (Ctrl+Q), the same idea as Command+Q. In a terminal those two become Ctrl+Shift+W and Ctrl+Shift+Q, so a tab closes and the terminal stays open when another tab is left, while Ctrl+W can still delete a word. Super+Space opens Vicinae. Shift+Super+Space opens 1Password Quick Access (`1password --quick-access`), the same chord as Shift+Command+Space on the Mac. A tap of Super still opens the overview. Terminals are remapped through `keyd-application-mapper` when that helper is installed. Running the bootstrap again restarts keyd, docker, libvirtd, and tailscaled when those services are already running, and restarts the application mapper when that user service is running
+- keyd from the `alternateved/keyd` COPR (upstream's Fedora package; it is not in the Fedora repos), plus `configure_macos_hotkeys` in `scripts/gnome.sh`, so the [shared hotkey map](#shared-hotkeys-macos--fedora) matches macOS. Holding Super sends the usual Command chords. Super+W / Super+Q are Close / Quit. Super+M / Super+H minimize. Super+Tab is the app switcher. Shift+Super+3/4/5 are screenshots. A tap of Super still opens the overview. Terminals are remapped through `keyd-application-mapper` when that helper is installed. Running the bootstrap again restarts keyd, docker, libvirtd, and tailscaled when those services are already running, and restarts the application mapper when that user service is running
 - Packaged GNOME extensions: Dash to Dock, AppIndicator, user themes (`gnome-shell-extension-user-theme`), and Blur My Shell. If the Blur My Shell package is missing, the script falls back to `gnome-extensions-cli`
 
 Log out and back in after the first Fedora run so the new groups, keyd, and GNOME extensions apply. If the dock or hotkey did not stick, open a terminal inside the graphical session and run `./scripts/gnome.sh`.
