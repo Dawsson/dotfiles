@@ -86,8 +86,26 @@ printf '%s\n' "$fed_plan" | grep -q '1Password extension' || fail "fedora plan m
 printf '%s\n' "$fed_plan" | grep -q 'would bind Shift+Super+Space' || fail "fedora plan missing 1Password Quick Access"
 printf '%s\n' "$fed_plan" | grep -q 'Slack' || fail "fedora plan missing Slack"
 printf '%s\n' "$fed_plan" | grep -q 'Tailscale systray' || fail "fedora plan missing the Tailscale desktop app"
-printf '%s\n' "$fed_plan" | grep -q '/usr/bin/ulauncher-toggle' || fail "fedora plan missing the Ulauncher shortcut command"
-printf '%s\n' "$fed_plan" | grep -q 'dawsson-ulauncher' || fail "fedora plan missing the Ulauncher helper"
+printf '%s\n' "$fed_plan" | grep -q 'vicinae toggle' || fail "fedora plan missing the Vicinae toggle command"
+printf '%s\n' "$fed_plan" | grep -q 'dawsson-vicinae' || fail "fedora plan missing the Vicinae helper"
+printf '%s\n' "$fed_plan" | grep -q 'mirror macOS hotkeys' || fail "fedora plan missing macOS hotkey mirroring"
+grep -qx 'cask "vicinae"' Brewfile.gui || fail "Brewfile.gui missing the Vicinae cask"
+grep -q 'shell-integration-features = ssh-terminfo,ssh-env' dotfiles/ghostty/config \
+  || fail "Ghostty config missing SSH terminfo/env features for paste/remote"
+grep -q '^dss()' dotfiles/zsh/.zshrc || fail "desktop SSH helper should be named dss()"
+grep -q 'ghostty +ssh' dotfiles/zsh/.zshrc || fail "dss() should prefer ghostty +ssh"
+if grep -qE '^dx\(\)|^alias dx=|function dx' dotfiles/zsh/.zshrc; then
+  fail "zshrc still defines dx as a shell function/alias (reserved for status CLI)"
+fi
+grep -q 'm = macro(leftmeta+m)' dotfiles/keyd/default.conf || fail "Super+M is not minimize"
+grep -q '3 = macro(leftshift+leftmeta+3)' dotfiles/keyd/default.conf || fail "Shift+Super+3 screenshot chord missing"
+if grep -qx 'cask "raycast"' Brewfile.gui; then
+  fail "Brewfile.gui still installs Raycast"
+fi
+[[ -x scripts/vicinae-show.sh ]] || fail "vicinae helper is not executable"
+if [[ -e scripts/ulauncher-show.sh ]]; then
+  fail "ulauncher helper should have been removed"
+fi
 printf '%s\n' "$fed_plan" | grep -q '.local/bin/dotup' || fail "fedora plan missing the dotup command"
 printf '%s\n' "$fed_plan" | grep -q 'sudo chsh -s' || fail "fedora plan missing sudo chsh"
 printf '%s\n' "$fed_plan" | grep -q 'cpa.env from ~/.bashrc' || fail "fedora plan missing the bashrc CPA fallback"
