@@ -38,6 +38,8 @@ The bootstrap refuses anything that is not macOS or Fedora. On Fedora it warns a
 | `--skip-runtimes` | Skip `mise install` (node, bun, go, Java, Rust, Python, uv, pnpm). |
 | `--only-dotfiles` | Only symlink configs and write the Codex CPA config. |
 | `--with-claude-cpa` | Opt Claude Code into the CPA host. The Anthropic compatibility of that endpoint is not verified. |
+| `--setup` | Only link configs, then walk through 1Password, Tailscale, GitHub, and the CPA key. |
+| `--skip-setup` | Install packages and skip the sign-in prompts. |
 | `--dry-run` | Print the actions and change nothing. |
 | `--help` | Show the flags. |
 
@@ -46,7 +48,9 @@ The bootstrap refuses anything that is not macOS or Fedora. On Fedora it warns a
 | Path | Role |
 | --- | --- |
 | `install.sh` | Curl-able entry point. Clones this repo if it is not already a checkout, then runs `bootstrap.sh`. |
-| `bootstrap.sh` | Detects the OS, links configs, installs packages, runtimes, and agent CLIs, then prints the manual follow-ups. |
+| `bootstrap.sh` | Detects the OS, links configs, installs packages, then walks through account sign-in. |
+| `scripts/setup.sh` | Interactive sign-in: 1Password, Tailscale, GitHub, the CPA key, and Cua on Fedora. |
+| `scripts/browser-1password.sh` | Registers the 1Password browser extension for Helium and lets the desktop app trust it. |
 | `lib/common.sh` | Logging, dry-run, sudo, and downloads. |
 | `scripts/link.sh` | Symlinks zsh, git, tmux, starship, mise, Ghostty, the CPA env file, and the keyd app map. Clones tmux plugin manager. |
 | `scripts/macos.sh` | Installs Homebrew if needed, applies `Brewfile` and `Brewfile.gui`, and sets Helium as the default browser with `duti`. |
@@ -69,7 +73,7 @@ Configs are symlinks back into this repo, except `~/.codex/config.toml`. That fi
 - Tailscale, 1Password app, 1Password CLI
 - Ghostty, Cursor, T3 Code Nightly, Grok Bot
 - Google Chrome and Helium. Helium becomes the default browser. Chrome stays installed.
-- Legcord, Slack, Spotify, Obsidian
+- Legcord, Slack, Spotify, Obsidian. Slack is a Homebrew cask on macOS and the Flathub app on Fedora.
 - Claude Code (native installer on macOS, official dnf repo on Fedora, native installer as the fallback)
 - Codex CLI from `https://chatgpt.com/codex/install.sh`
 
@@ -99,7 +103,7 @@ Homebrew, then the curated casks in `Brewfile.gui`:
 - Dash to Dock on the bottom, always visible (`autohide` left off). Window buttons on the left: close, minimize, maximize
 - WhiteSur GTK, icon, and cursor themes, Inter, and JetBrainsMono Nerd Font
 - Natural scrolling and tap-to-click
-- keyd from the `alternateved/keyd` COPR (upstream's Fedora package; it is not in the Fedora repos). Holding Super sends the usual Command chords (copy, paste, cut, undo, select-all, and the rest of the Control-letter keys). Super+Space stays Super+Space for Ulauncher. A tap of Super still opens the overview. Terminals are remapped to Ctrl+Shift+C/V through `keyd-application-mapper` when that helper is installed
+- keyd from the `alternateved/keyd` COPR (upstream's Fedora package; it is not in the Fedora repos). Holding Super sends the usual Command chords (copy, paste, cut, undo, select-all, and the rest of the Control-letter keys). Super+Space stays Super+Space for Ulauncher. Shift+Super+Space opens 1Password Quick Access (`1password --quick-access`), the same chord as Shift+Command+Space on the Mac. A tap of Super still opens the overview. Terminals are remapped to Ctrl+Shift+C/V through `keyd-application-mapper` when that helper is installed
 - Packaged GNOME extensions: Dash to Dock, AppIndicator, user themes (`gnome-shell-extension-user-theme`), and Blur My Shell. If the Blur My Shell package is missing, the script falls back to `gnome-extensions-cli`
 
 Log out and back in after the first Fedora run so the new groups, keyd, and GNOME extensions apply. If the dock or hotkey did not stick, open a terminal inside the graphical session and run `./scripts/gnome.sh`.
@@ -136,12 +140,25 @@ ANTHROPIC_AUTH_TOKEN=$CPA_API_KEY
 
 There is no `/v1` on that base URL. Whether CPA actually exposes an Anthropic-compatible API still needs to be confirmed before relying on it. Remove `~/.codex/claude-cpa.enable` to turn it off.
 
+## Sign-in
+
+A normal run ends by asking, in this order: 1Password, Tailscale, GitHub, the CPA key, then Cua on Fedora. Steps that are already done are skipped. `curl | bash` still prompts, because the questions are read from the terminal. `--skip-setup` installs software and leaves sign-in for later. `./bootstrap.sh --setup` runs only the questions.
+
+1Password comes first so the CLI can read the CPA item. Turn on Settings → Developer → Integrate with 1Password CLI. On the Mac, Shift+Command+Space is the app's Quick Access shortcut. On Fedora, Wayland does not let 1Password register that shortcut itself, so GNOME binds Shift+Super+Space to `1password --quick-access`.
+
+GitHub sign-in is `gh auth login --hostname github.com --git-protocol https --web`. Git's user name and email come from the linked gitconfig. HTTPS clones of GitHub and gists use `gh auth git-credential`, which is already in that file. `gh auth setup-git` is not used: it writes the same helpers with `git config --global`, and that would edit the symlinked gitconfig in this repo.
+
+## 1Password in Helium
+
+Helium is not one of 1Password's officially supported browsers. The bootstrap still registers the Chrome Web Store extension (`aeblfdkhhhdcdjpifhhbdiojplfjncoa`) for Helium and adds `helium` to `/etc/1password/custom_allowed_browsers` on Fedora. On macOS it writes Helium's native-messaging manifest. Quit and reopen both apps once. If the extension does not connect, open 1Password so it can install its browser helper, then re-run `./bootstrap.sh`.
+
+The Linux extension file lives in `/usr/share/chromium/extensions`, which is the directory Helium's Chromium build reads. Google Chrome uses a different directory. This is not an enterprise policy, so Helium is not marked as managed.
+
 ## Manual steps after install
 
 1. Open a new terminal so the zshrc, mise, and `cpa.env` are loaded. If `chsh` could not change the login shell, run `chsh -s "$(command -v zsh)"`.
-2. Sign in to the 1Password app and turn on the CLI integration. `op signin` if the CLI asks.
-3. Run `tailscale up` and approve the device. The CPA host is a Tailscale name and will not resolve before this.
-4. Install the CPA client key:
+2. If you passed `--skip-setup`, run `./bootstrap.sh --setup` and sign in to 1Password, Tailscale, and GitHub there.
+3. Install the CPA client key if the prompt was skipped:
    ```bash
    install -m 600 /dev/stdin ~/.codex/cpa-client-key
    ```
@@ -150,12 +167,12 @@ There is no `/v1` on that base URL. Whether CPA actually exposes an Anthropic-co
    printf '%s\n' 'op://Vault/Item/password' > ~/.codex/cpa-op-ref
    chmod 600 ~/.codex/cpa-op-ref
    ```
-5. Open another shell and check the key without printing it: `[ -n "$CPA_API_KEY" ] && echo "CPA key is set"`. Then run `codex`.
-6. Sign in to Cursor, Grok Bot, and T3 Code Nightly.
-7. On Fedora, run `cua auth login`. The Spaces app is not part of this install.
-8. On Fedora, log out and back in. Confirm `groups` contains `docker` and `libvirt`.
-9. On the Mac, accept Raycast's prompt for Command-Space. OrbStack is the Docker runtime; Docker Desktop is not installed.
-10. Helium should be the default browser. Chrome is still installed if you want it.
+4. Open another shell and check the key without printing it: `[ -n "$CPA_API_KEY" ] && echo "CPA key is set"`. Then run `codex`.
+5. Sign in to Cursor, Grok Bot, T3 Code Nightly, and Slack.
+6. On Fedora, run `cua auth login` if the prompt was skipped. The Spaces app is not part of this install.
+7. On Fedora, log out and back in. Confirm `groups` contains `docker` and `libvirt`.
+8. On the Mac, accept Raycast's prompt for Command-Space. OrbStack is the Docker runtime; Docker Desktop is not installed.
+9. Helium should be the default browser, with the 1Password extension registered. Chrome stays installed.
 
 ## Not installed
 

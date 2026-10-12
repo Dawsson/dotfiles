@@ -8,6 +8,8 @@
 	email = hello@dawson.gg
 [alias]
 	fame = !python3 -m gitfame
+# Same helpers `gh auth setup-git` would write. The bootstrap runs
+# `gh auth login` and does not run setup-git, because that rewrites this file.
 [credential "https://github.com"]
 	helper =
 	helper = !gh auth git-credential

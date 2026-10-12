@@ -234,6 +234,7 @@ fedora_gui() {
   install_grok_bot
   install_t3_nightly
   install_1password_app
+  install_1password_helium
   install_ghostty_package
   set_helium_default
 }
@@ -298,6 +299,27 @@ EOF
     command "$cmd"
   gset org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/ulauncher/ \
     binding '<Super>space'
+}
+
+configure_1password_quick_access() {
+  local current merged path
+  path="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/1password-quick-access/"
+  if [[ "$DRY_RUN" == "1" ]]; then
+    log "would bind Shift+Super+Space to 1password --quick-access"
+    return 0
+  fi
+  current="$(gsettings get org.gnome.settings-daemon.plugins.media-keys custom-keybindings 2>/dev/null || true)"
+  if [[ -z "$current" ]]; then
+    current="@as []"
+  fi
+  merged="$(py gnome-keybindings "$current" "$path")"
+  gset org.gnome.settings-daemon.plugins.media-keys custom-keybindings "$merged"
+  gset org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/1password-quick-access/ \
+    name '1Password Quick Access'
+  gset org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/1password-quick-access/ \
+    command '1password --quick-access'
+  gset org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/1password-quick-access/ \
+    binding '<Shift><Super>space'
 }
 
 install_keyd() {
@@ -465,6 +487,7 @@ fedora_desktop() {
   section "GNOME"
   install_ulauncher
   configure_ulauncher
+  configure_1password_quick_access
   install_keyd
   install_inter_font
   install_whitesur

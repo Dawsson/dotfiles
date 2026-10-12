@@ -83,5 +83,6 @@ macos_packages() {
 
   section "Homebrew apps"
   run brew bundle --file "${DOTFILES_ROOT}/Brewfile.gui"
+  install_1password_helium
   macos_default_browser
 }
