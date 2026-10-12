@@ -85,6 +85,12 @@ printf '%s\n' "$mac_plan" | grep -q '1Password extension' || fail "mac plan miss
 printf '%s\n' "$fed_plan" | grep -q '1Password extension' || fail "fedora plan missing the Helium 1Password extension"
 printf '%s\n' "$fed_plan" | grep -q 'would bind Shift+Super+Space' || fail "fedora plan missing 1Password Quick Access"
 printf '%s\n' "$fed_plan" | grep -q 'Slack' || fail "fedora plan missing Slack"
+printf '%s\n' "$fed_plan" | grep -q 'Tailscale systray' || fail "fedora plan missing the Tailscale desktop app"
+printf '%s\n' "$fed_plan" | grep -q '/usr/bin/ulauncher-toggle' || fail "fedora plan missing the Ulauncher shortcut command"
+printf '%s\n' "$fed_plan" | grep -q 'via F14' || fail "fedora plan missing the F14 Ulauncher binding"
+if printf '%s\n' "$skip_plan" | grep -q 'Tailscale systray'; then
+  fail "--skip-gui still plans the Tailscale desktop app"
+fi
 printf '%s\n' "$mac_plan" | grep -q 'gh auth login' || fail "mac plan missing GitHub sign-in"
 printf '%s\n' "$mac_plan" | grep -q 'setup-git is not run' || fail "mac plan should skip gh auth setup-git"
 if printf '%s\n' "$skip_plan" | grep -q 'would bind Shift+Super+Space'; then
