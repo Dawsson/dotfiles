@@ -416,8 +416,13 @@ WantedBy=graphical-session.target
 EOF
   if systemd_active && [[ -n "${XDG_RUNTIME_DIR:-}" ]]; then
     systemctl --user daemon-reload || true
-    systemctl --user enable --now keyd-application-mapper.service \
-      || warn "could not start keyd-application-mapper; enable it after graphical login"
+    if systemctl --user is-active --quiet keyd-application-mapper.service; then
+      systemctl --user restart keyd-application-mapper.service \
+        || warn "could not restart keyd-application-mapper"
+    else
+      systemctl --user enable --now keyd-application-mapper.service \
+        || warn "could not start keyd-application-mapper; enable it after graphical login"
+    fi
   else
     warn "after graphical login, run: systemctl --user enable --now keyd-application-mapper"
   fi

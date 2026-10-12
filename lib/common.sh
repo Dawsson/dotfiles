@@ -110,7 +110,7 @@ enable_system_service() {
     warn "systemd is not running; enable ${unit} on the real machine"
     return 0
   fi
-  run_root systemctl enable --now "$unit"
+  run_root systemctl enable --now "$unit" || warn "could not enable ${unit}"
 }
 
 ensure_group_member() {

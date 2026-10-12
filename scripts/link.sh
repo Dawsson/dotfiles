@@ -65,4 +65,30 @@ link_dotfiles() {
       ;;
   esac
   install_tpm
+  ensure_bashrc_cpa
+}
+
+ensure_bashrc_cpa() {
+  local bashrc="${HOME}/.bashrc" marker="# dawsson-dotfiles cpa.env"
+  if [[ "$DRY_RUN" == "1" ]]; then
+    log "would source ~/.codex/cpa.env from ~/.bashrc"
+    return 0
+  fi
+  if [[ -f "$bashrc" ]] && grep -F -q "$marker" "$bashrc"; then
+    log "bashrc already sources cpa.env"
+    return 0
+  fi
+  if [[ -f "$bashrc" ]] && grep -F -q '.codex/cpa.env' "$bashrc"; then
+    log "bashrc already sources cpa.env"
+    return 0
+  fi
+  touch "$bashrc"
+  if [[ -s "$bashrc" ]]; then
+    printf '\n' >> "$bashrc"
+  fi
+  cat >> "$bashrc" <<'EOF'
+# dawsson-dotfiles cpa.env
+[ -f "$HOME/.codex/cpa.env" ] && . "$HOME/.codex/cpa.env"
+EOF
+  log "bashrc sources cpa.env"
 }

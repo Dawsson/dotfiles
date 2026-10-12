@@ -102,27 +102,55 @@ detect_os() {
   esac
 }
 
+current_login_shell() {
+  local user entry
+  user="$(current_user)"
+  entry="$(getent passwd "$user" 2>/dev/null || true)"
+  if [[ -n "$entry" ]]; then
+    printf '%s' "${entry##*:}"
+    return 0
+  fi
+  if [[ "$(uname -s)" == "Darwin" ]] && have dscl; then
+    dscl . -read "/Users/${user}" UserShell 2>/dev/null | awk '{print $2}'
+    return 0
+  fi
+  printf '%s' "${SHELL:-}"
+}
+
 ensure_login_shell() {
-  local zsh_path
+  local zsh_path current
   section "Login shell"
   zsh_path="$(command -v zsh || true)"
   if [[ -z "$zsh_path" ]]; then
     warn "zsh is not on PATH yet"
     return 0
   fi
+  current="$(current_login_shell)"
+  if [[ "${current##*/}" == "zsh" ]]; then
+    log "login shell is already zsh"
+    return 0
+  fi
   if [[ "$DRY_RUN" == "1" ]]; then
-    log "would set the login shell to ${zsh_path}"
+    if [[ "$OS" == "fedora" ]]; then
+      log "would run sudo chsh -s ${zsh_path} $(current_user); log out and back in"
+    else
+      log "would set the login shell to ${zsh_path}"
+    fi
     return 0
   fi
   if ! grep -qx "$zsh_path" /etc/shells 2>/dev/null; then
     echo "$zsh_path" | sudo tee -a /etc/shells >/dev/null || warn "could not add zsh to /etc/shells"
   fi
-  if [[ "${SHELL:-}" == "$zsh_path" ]]; then
-    log "login shell is already ${zsh_path}"
+  if [[ "$OS" == "fedora" ]]; then
+    if sudo chsh -s "$zsh_path" "$(current_user)"; then
+      log "login shell set to ${zsh_path}. Log out and back in so new terminals use zsh."
+    else
+      warn "could not change the login shell. Run: sudo chsh -s ${zsh_path} $(current_user)"
+    fi
     return 0
   fi
   if chsh -s "$zsh_path" "$(current_user)"; then
-    log "login shell set to ${zsh_path}; open a new login session"
+    log "login shell set to ${zsh_path}. Log out and back in so new terminals use zsh."
   else
     warn "could not change the login shell. Run: chsh -s ${zsh_path}"
   fi
@@ -134,20 +162,21 @@ print_next_steps() {
 
 Next:
   1. Re-run ./bootstrap.sh --setup from a terminal to sign in to 1Password, Tailscale, and GitHub.
-  2. Put the CPA key in ~/.codex/cpa-client-key, or an op:// URI in ~/.codex/cpa-op-ref.
+  2. The CPA reference is ~/.codex/cpa-op-ref. Sign in to 1Password so the key file can be written.
   3. Codex uses https://devbox-dawson.tail20065d.ts.net/v1 only after Tailscale is up.
-  4. Sign in to Cursor, Grok Bot, T3 Code, and Slack. On Fedora, log out so docker, libvirt, keyd, and GNOME extensions apply.
+  4. Sign in to Cursor, Grok Bot, T3 Code, and Slack. On Fedora, log out so the zsh login shell, docker, libvirt, keyd, and GNOME extensions apply.
 EOF
     return 0
   fi
   cat <<'EOF' >&2
 
 Next:
-  1. Open a new terminal so zsh, mise, and cpa.env load.
-  2. Shift+Command+Space opens 1Password Quick Access. On Fedora that chord is Shift+Super+Space.
+  1. On Fedora, log out and back in so the login shell is zsh and cpa.env loads. Until then, bash still sources ~/.codex/cpa.env from ~/.bashrc.
+  2. Shift+Command+Space opens 1Password Quick Access. On Fedora that chord is Shift+Super+Space. Super+W closes a tab and Super+Q quits, same as Command+W and Command+Q on the Mac.
   3. Codex uses https://devbox-dawson.tail20065d.ts.net/v1 only after Tailscale is up.
   4. Claude Code's Anthropic base URL is opt-in (`--with-claude-cpa`) and unverified.
-  5. Sign in to Cursor, Grok Bot, T3 Code, and Slack. On Fedora, log out so docker, libvirt, keyd, and GNOME extensions apply.
+  5. Sign in to Cursor, Grok Bot, T3 Code, and Slack. On Fedora, log out so the zsh login shell, docker, libvirt, keyd, and GNOME extensions apply.
+  6. Later, run dotup to pull the latest dotfiles from GitHub and run this script again.
 EOF
 }
 
@@ -164,11 +193,13 @@ main() {
   link_dotfiles
   install_codex_config
   if [[ "$SETUP_ONLY" == "1" ]]; then
+    ensure_login_shell
     run_account_setup
     print_next_steps
     return 0
   fi
   if [[ "$ONLY_DOTFILES" == "1" ]]; then
+    ensure_cpa_from_1password
     print_next_steps
     return 0
   fi
@@ -185,6 +216,7 @@ main() {
   ensure_login_shell
   if [[ "$SKIP_SETUP" == "1" ]]; then
     log "skipping interactive account setup"
+    ensure_cpa_from_1password
   else
     run_account_setup
   fi
