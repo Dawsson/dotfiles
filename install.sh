@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
-# Remote entry point:
+# First-time bootstrap only (curl | bash). Day-to-day updates use `dx update` / `dotup`.
+#
 #   curl -fsSL https://raw.githubusercontent.com/Dawsson/dotfiles/main/install.sh | bash
 #   curl -fsSL https://raw.githubusercontent.com/Dawsson/dotfiles/main/install.sh | bash -s -- --skip-gui
+#
+# After the first run, prefer:
+#   dx update
+#   dx up --skip-gui
+#   dotup            # thin wrapper → dx update
 set -euo pipefail
 
 REPO_URL="${DOTFILES_REPO:-https://github.com/Dawsson/dotfiles.git}"
@@ -30,6 +36,11 @@ ensure_git() {
 
 checkout="$(running_from_checkout || true)"
 if [[ -n "$checkout" ]]; then
+  # From a checkout: hand off to bootstrap (install.sh is not the day-to-day path).
+  # Prefer `dx update` once the CLI is on PATH.
+  if command -v dx >/dev/null 2>&1; then
+    echo "note: day-to-day updates use \`dx update\` (or \`dotup\`); running bootstrap once from checkout" >&2
+  fi
   exec "${checkout}/bootstrap.sh" "$@"
 fi
 

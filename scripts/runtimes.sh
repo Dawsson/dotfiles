@@ -43,3 +43,28 @@ install_runtimes() {
   mise reshim || true
   log "mise tools installed"
 }
+
+# Install the tiny `dx` CLI (status-cli only — not dx-tray) into ~/.cargo/bin.
+install_dx_cli() {
+  section "dx CLI"
+  local status_dir="${DOTFILES_ROOT}/apps/status"
+  if [[ ! -f "${status_dir}/Cargo.toml" ]]; then
+    warn "apps/status missing; skip dx install"
+    return 0
+  fi
+  if [[ "$DRY_RUN" == "1" ]]; then
+    log "would cargo install --path crates/status-cli (dx) into ~/.cargo/bin"
+    return 0
+  fi
+  export PATH="${HOME}/.cargo/bin:${PATH}"
+  if ! have cargo; then
+    warn "cargo not on PATH; skip dx install (ensure mise rust is installed)"
+    return 0
+  fi
+  (
+    cd "$status_dir"
+    cargo install --path crates/status-cli --locked --force
+  )
+  have dx || die "cargo install finished but dx is not on PATH (expected ~/.cargo/bin)"
+  log "dx installed at $(command -v dx)"
+}

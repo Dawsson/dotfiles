@@ -49,8 +49,11 @@ fi
 
 echo "== help and unsupported host"
 ./bootstrap.sh --help >/dev/null
-if ./bootstrap.sh --dry-run >/dev/null 2>&1; then
-  fail "dry-run on this host should refuse when it is not macOS or Fedora"
+# On macOS/Fedora dry-run is valid; only unsupported hosts must refuse.
+if [[ "$(uname -s)" != "Darwin" && ! -r /etc/fedora-release ]]; then
+  if ./bootstrap.sh --dry-run >/dev/null 2>&1; then
+    fail "dry-run on this host should refuse when it is not macOS or Fedora"
+  fi
 fi
 
 echo "== dry-run plans"
@@ -93,7 +96,8 @@ printf '%s\n' "$fed_plan" | grep -q 'Alt-as-Command' || fail "fedora plan missin
 printf '%s\n' "$fed_plan" | grep -q 'terminal Ctrl+C/V' || fail "fedora plan missing terminal Ctrl+C/V copy/paste"
 printf '%s\n' "$fed_plan" | grep -q 'Force Quit' || fail "fedora plan missing Force Quit binding"
 printf '%s\n' "$fed_plan" | grep -q '.local/bin/dotup' || fail "fedora plan missing the dotup command"
-printf '%s\n' "$fed_plan" | grep -q 'sudo chsh -s' || fail "fedora plan missing sudo chsh"
+printf '%s\n' "$fed_plan" | grep -qE 'sudo chsh -s|login shell is already zsh' \
+  || fail "fedora plan missing chsh / login-shell step"
 printf '%s\n' "$fed_plan" | grep -q 'cpa.env from ~/.bashrc' || fail "fedora plan missing the bashrc CPA fallback"
 printf '%s\n' "$fed_plan" | grep -q 'op://Personal/Devbox CPA client key/credential' || fail "fedora plan missing the default CPA reference"
 printf '%s\n' "$fed_plan" | grep -q 'restart managed services' || fail "fedora plan missing service refresh"
@@ -164,7 +168,24 @@ if grep -E '^(left|right)?control\s*=' dotfiles/keyd/default.conf; then
   fail "keyd must not remap physical Ctrl"
 fi
 grep -q 'dotup()' dotfiles/zsh/.zshrc || fail "zshrc missing dotup"
+grep -q 'dx update' scripts/dotup.sh || fail "dotup.sh should exec dx update"
+grep -q 'dx update' dotfiles/zsh/.zshrc || fail "zshrc dotup() should call dx update"
 [[ -x scripts/dotup.sh ]] || fail "dotup command is not executable"
+[[ -f apps/status/Cargo.toml ]] || fail "apps/status workspace missing"
+[[ -f apps/status/crates/status-cli/src/main.rs ]] || fail "status-cli missing"
+grep -q 'Update' apps/status/crates/status-cli/src/main.rs || fail "dx should expose Update"
+grep -q 'visible_alias = "up"' apps/status/crates/status-cli/src/main.rs \
+  || fail "dx update should alias as up"
+grep -q 'install_dx_cli' scripts/runtimes.sh || fail "runtimes.sh should install dx CLI"
+grep -q 'install_dx_cli' bootstrap.sh || fail "bootstrap should call install_dx_cli"
+printf '%s\n' "$fed_plan" | grep -q 'crates/status-cli' \
+  || fail "fedora dry-run should plan cargo install of dx"
+if grep -qE '^dx\(\)|^alias dx=|function dx' dotfiles/zsh/.zshrc; then
+  fail "zshrc still defines dx as a shell function/alias (reserved for status CLI)"
+fi
+# First-time curl path stays install.sh; day-to-day must not be install.sh-primary.
+grep -q 'First-time bootstrap only' install.sh || fail "install.sh should be marked first-time only"
+grep -q 'dx update' README.md || fail "README should document dx update"
 if printf '%s\n' "$skip_plan" | grep -q 'Tailscale systray'; then
   fail "--skip-gui still plans the Tailscale desktop app"
 fi
@@ -233,12 +254,15 @@ find "$work" -name '*.dotfiles-backup.*' | grep -q . || fail "missing backup of 
 echo "== cpa.env loads the key and keeps Claude opt-in off"
 printf '%s\n' 'test-key' > "$tmp/.codex/cpa-client-key"
 chmod 600 "$tmp/.codex/cpa-client-key"
+# Clear inherited CPA/Anthropic vars so the fixture key is what gets loaded.
 # shellcheck disable=SC1091
-HOME="$tmp" bash -c 'source "$HOME/.codex/cpa.env"; [ "$CPA_API_KEY" = "test-key" ] && [ -z "${ANTHROPIC_BASE_URL:-}" ]' \
+HOME="$tmp" env -u CPA_API_KEY -u ANTHROPIC_BASE_URL -u ANTHROPIC_AUTH_TOKEN \
+  bash -c 'source "$HOME/.codex/cpa.env"; [ "$CPA_API_KEY" = "test-key" ] && [ -z "${ANTHROPIC_BASE_URL:-}" ]' \
   || fail "cpa.env did not export only the key"
 touch "$tmp/.codex/claude-cpa.enable"
 # shellcheck disable=SC1091
-HOME="$tmp" bash -c 'source "$HOME/.codex/cpa.env"; [ "$ANTHROPIC_BASE_URL" = "https://devbox-dawson.tail20065d.ts.net" ] && [ "$ANTHROPIC_AUTH_TOKEN" = "test-key" ]' \
+HOME="$tmp" env -u CPA_API_KEY -u ANTHROPIC_BASE_URL -u ANTHROPIC_AUTH_TOKEN \
+  bash -c 'source "$HOME/.codex/cpa.env"; [ "$ANTHROPIC_BASE_URL" = "https://devbox-dawson.tail20065d.ts.net" ] && [ "$ANTHROPIC_AUTH_TOKEN" = "test-key" ]' \
   || fail "claude opt-in did not export the unverified Anthropic endpoint"
 case "${ANTHROPIC_BASE_URL:-}" in
   */v1) fail "ANTHROPIC_BASE_URL leaked into this shell with a /v1 suffix" ;;
@@ -253,7 +277,8 @@ printf '%s\n' "$2" > "$HOME/op-ref-seen"
 printf '%s\n' 'from-op'
 EOF
 chmod +x "$tmp/bin/op"
-PATH="$tmp/bin:$PATH" HOME="$tmp" bash -c 'source "$HOME/.codex/cpa.env"; [ "$CPA_API_KEY" = "from-op" ]' \
+PATH="$tmp/bin:$PATH" HOME="$tmp" env -u CPA_API_KEY -u ANTHROPIC_BASE_URL -u ANTHROPIC_AUTH_TOKEN \
+  bash -c 'source "$HOME/.codex/cpa.env"; [ "$CPA_API_KEY" = "from-op" ]' \
   || fail "cpa.env did not read the spaced op reference"
 grep -F -q 'op://Personal/Devbox CPA client key/credential' "$tmp/op-ref-seen" \
   || fail "op read dropped spaces from the CPA reference"

@@ -6,7 +6,7 @@ No secrets are stored in this repo. API keys stay in files under `~/.codex/` on 
 
 ## Quick start
 
-From a fresh machine, with `git` and `curl` available:
+**First-time only** (fresh machine, `git` + `curl`):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Dawsson/dotfiles/main/install.sh | bash
@@ -18,7 +18,7 @@ Pass flags through `bash -s`:
 curl -fsSL https://raw.githubusercontent.com/Dawsson/dotfiles/main/install.sh | bash -s -- --skip-gui
 ```
 
-Or clone it and run the bootstrap directly:
+Or clone and bootstrap once:
 
 ```bash
 git clone https://github.com/Dawsson/dotfiles.git ~/.dotfiles
@@ -26,7 +26,17 @@ cd ~/.dotfiles
 ./bootstrap.sh
 ```
 
-`install.sh` clones into `~/.dotfiles` (override with `DOTFILES_DIR` or `DOTFILES_REPO`) and then execs `bootstrap.sh`. Running `./install.sh` from a checkout just execs `bootstrap.sh`.
+`install.sh` is the curl-able first-time entry: it clones into `~/.dotfiles` (override with `DOTFILES_DIR` or `DOTFILES_REPO`) and execs `bootstrap.sh`. After that, do **not** re-run `install.sh` for daily updates.
+
+**Day-to-day** (after the CLI is on PATH via bootstrap/`cargo install`):
+
+```bash
+dx update              # or: dx up
+dx update --skip-gui
+dotup                  # thin alias → dx update
+```
+
+`dx update` pulls `origin/main`, rebuilds the tiny `dx` CLI from `apps/status`, then runs `bootstrap.sh` (links, packages, gnome/keyd when on Linux, etc.).
 
 The bootstrap refuses anything that is not macOS or Fedora. On Fedora it warns and continues if the release is not 44 or the CPU is not x86_64.
 
@@ -47,8 +57,10 @@ The bootstrap refuses anything that is not macOS or Fedora. On Fedora it warns a
 
 | Path | Role |
 | --- | --- |
-| `install.sh` | Curl-able entry point. Clones this repo if it is not already a checkout, then runs `bootstrap.sh`. |
-| `bootstrap.sh` | Detects the OS, links configs, installs packages, then walks through account sign-in. |
+| `install.sh` | **First-time only** curl entry. Clones the repo, then runs `bootstrap.sh`. Not the day-to-day path. |
+| `bootstrap.sh` | Detects the OS, links configs, installs packages (including `dx`), then walks through account sign-in. |
+| `apps/status/` | Rust workspace: `dx` (update/doctor/status) and `dx-tray` (menubar stub). |
+| `scripts/dotup.sh` | Thin wrapper linked to `~/.local/bin/dotup` → `dx update`. |
 | `scripts/setup.sh` | Interactive sign-in: 1Password, Tailscale, GitHub, the CPA key, and Cua on Fedora. |
 | `scripts/browser-1password.sh` | Registers the 1Password browser extension for Helium and lets the desktop app trust it. |
 | `lib/common.sh` | Logging, dry-run, sudo, and downloads. |
@@ -67,7 +79,7 @@ Configs are symlinks back into this repo, except `~/.codex/config.toml`. That fi
 
 ## Installed on both
 
-- Shell: zsh, Starship, zoxide, the shared zshrc / gitconfig / tmux / Ghostty config. On Fedora the login shell is changed with `sudo chsh -s "$(command -v zsh)" "$USER"` when it is not already zsh. Log out and back in after that. `~/.bashrc` also sources `cpa.env`, so a bash login still gets the CPA key. `dotup` is a command you type in bash or zsh, not a key. It lives at `~/.local/bin/dotup`, pulls `origin/main`, and runs `bootstrap.sh` again. Open a new terminal first if the current one was started before bootstrap installed it
+- Shell: zsh, Starship, zoxide, the shared zshrc / gitconfig / tmux / Ghostty config. On Fedora the login shell is changed with `sudo chsh -s "$(command -v zsh)" "$USER"` when it is not already zsh. Log out and back in after that. `~/.bashrc` also sources `cpa.env`, so a bash login still gets the CPA key. Day-to-day updates: type `dx update` or `dotup` (not a key). `dotup` is a thin alias for `dx update`. Open a new terminal first if PATH was updated in this session. Desktop SSH is `dss` (not `dx`)
 - mise toolchains: Node 24, Bun, Go, Java (Zulu 21), Rust, Python, uv, pnpm
 - CLIs: gh, lazygit, btop, tmux, zellij, fastfetch, tree, wget, xh, yt-dlp, ffmpeg, doppler, pscale, cloudflared, restic, sops, poppler, git-lfs, ripgrep, jq
 - Tailscale, 1Password app, 1Password CLI. On Fedora the desktop app is the Tailscale systray, started at login
@@ -78,6 +90,25 @@ Configs are symlinks back into this repo, except `~/.codex/config.toml`. That fi
 - Codex CLI from `https://chatgpt.com/codex/install.sh`
 
 The zshrc still loads keys from files (`~/.codex/config.toml`, `~/.codex/secrets.env`, `~/.codex/cpa.env`). Homebrew, OrbStack, `open`, and `launchctl` run only on macOS. Paths use `$HOME`.
+
+## Status / update CLI (`dx`)
+
+`dx` lives in [`apps/status/`](apps/status/) and owns machine update + status checks. The menubar stub is `dx-tray`. Desktop SSH stays **`dss`**.
+
+| Command | What |
+| --- | --- |
+| `dx update` / `dx up` | Pull `origin/main`, `cargo install` the `dx` CLI only, then `bootstrap.sh` |
+| `dx doctor` | Health checks |
+| `dx status` / `dx tailscale` | Live status providers |
+| `dotup` | Same as `dx update` (shell function + `~/.local/bin/dotup`) |
+
+```bash
+cd apps/status
+cargo build --release -p status-cli
+cargo install --path crates/status-cli --locked
+```
+
+Full layout and GPUI notes: [`apps/status/README.md`](apps/status/README.md).
 
 ## Shared hotkeys (macOS ↔ Fedora)
 

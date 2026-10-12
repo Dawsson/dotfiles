@@ -294,23 +294,22 @@ if [[ -d "$HOME/.grok/completions/zsh" ]]; then
   autoload -Uz compinit && compinit -C
 fi
 
-# Terminal command, not a key. Pass bootstrap flags through, for example: dotup --skip-gui
+# Terminal command, not a key. Thin alias for `dx update` (pull + refresh CLI + bootstrap).
+# Pass bootstrap flags through, for example: dotup --skip-gui
 dotup() {
-  local bin link root
+  local bin
+  if command -v dx >/dev/null 2>&1; then
+    dx update "$@"
+    return
+  fi
   bin="${HOME}/.local/bin/dotup"
   if [[ -x "$bin" ]]; then
     "$bin" "$@"
     return
   fi
-  link="${HOME}/.zshrc"
-  if [[ ! -L "$link" ]]; then
-    printf 'dotup: ~/.zshrc is not a symlink into the dotfiles repo\n' >&2
-    return 1
-  fi
-  link="$(readlink "$link")" || return 1
-  root="$(cd "$(dirname "$link")/../.." && pwd)" || return 1
-  git -C "$root" pull --ff-only origin main || return 1
-  "$root/bootstrap.sh" "$@"
+  printf 'dotup: dx not on PATH; install with cargo install --path apps/status/crates/status-cli,\n' >&2
+  printf 'or run ~/.local/bin/dotup after bootstrap links it.\n' >&2
+  return 1
 }
 
 # CPA key and the optional Claude Code opt-in. No secrets in this file.

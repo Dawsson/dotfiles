@@ -176,7 +176,8 @@ Next:
   3. Codex uses https://devbox-dawson.tail20065d.ts.net/v1 only after Tailscale is up.
   4. Claude Code's Anthropic base URL is opt-in (`--with-claude-cpa`) and unverified.
   5. Sign in to Cursor, Grok Bot, T3 Code, and Slack. On Fedora, log out so the zsh login shell, docker, libvirt, keyd, and GNOME extensions apply.
-  6. dotup is a command you type, not a key. Open a new terminal and run: dotup
+  6. Day-to-day updates: open a new terminal and run `dx update` (or `dotup`, a thin alias).
+     That refreshes the dx CLI, then runs bootstrap — not install.sh.
 EOF
 }
 
@@ -212,6 +213,8 @@ main() {
   else
     log "skipping mise toolchains"
   fi
+  # Prefer a current dx CLI on PATH even when --skip-runtimes (cargo may already exist).
+  install_dx_cli
   install_agent_clis
   ensure_login_shell
   if [[ "$SKIP_SETUP" == "1" ]]; then
