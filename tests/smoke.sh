@@ -112,12 +112,19 @@ grep -q '\[opt\]' dotfiles/keyd/default.conf || fail "Option layer missing"
 grep -q 'left = C-left' dotfiles/keyd/default.conf || fail "Super+Left word jump missing"
 grep -q '3 = macro(leftshift+leftmeta+3)' dotfiles/keyd/default.conf || fail "Alt+Shift+3 screenshot chord missing"
 grep -q 'q = macro(leftmeta+l)' dotfiles/keyd/default.conf || fail "Ctrl+Alt+Q lock chord missing"
-grep -q 'cmd.c = C-S-c' dotfiles/keyd/app.conf || fail "terminal Alt+C is not interrupt"
-grep -q 'cmd.w = C-S-w' dotfiles/keyd/app.conf || fail "terminal Alt+W is not close-tab"
+grep -q 'c = C-insert' dotfiles/keyd/default.conf || fail "Alt+C should emit Ctrl+Insert for native terminal SIGINT"
+if grep -q 'cmd.c = ' dotfiles/keyd/app.conf; then
+  fail "terminal Alt+C must not rely on keyd app.conf (use Ghostty/gsettings)"
+fi
+grep -q 'cmd.w = C-S-w' dotfiles/keyd/app.conf || fail "terminal Alt+W close-tab override missing"
 grep -q 'performable:ctrl+c=copy_to_clipboard' dotfiles/ghostty/config \
   || fail "Ghostty Ctrl+C should copy when performable"
-grep -qF 'ctrl+shift+c=text:\x03' dotfiles/ghostty/config \
-  || fail "Ghostty Ctrl+Shift+C should send SIGINT for Alt+C"
+grep -qF 'alt+c=text:\x03' dotfiles/ghostty/config \
+  || fail "Ghostty Alt+C should send SIGINT via text:\\x03"
+grep -qF 'ctrl+insert=text:\x03' dotfiles/ghostty/config \
+  || fail "Ghostty Ctrl+Insert should send SIGINT for keyd Alt+C"
+grep -q 'org.gnome.Ptyxis.Shortcuts' scripts/gnome.sh \
+  || fail "gnome.sh should configure Ptyxis Shortcuts for Ctrl+C/V"
 grep -q 'shell-integration-features = ssh-terminfo,ssh-env' dotfiles/ghostty/config \
   || fail "Ghostty config missing SSH terminfo/env features for paste/remote"
 grep -q '^dss()' dotfiles/zsh/.zshrc || fail "desktop SSH helper should be named dss()"

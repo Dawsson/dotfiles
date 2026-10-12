@@ -439,8 +439,8 @@ configure_terminal_copy_paste() {
     log "would set terminal Ctrl+C/V to copy/paste (Ghostty performable; GNOME Terminal/Ptyxis Primary+c/v)"
     return 0
   fi
-  # GNOME Terminal: Ctrl+C/V copy/paste like GUI apps. Unbind the old Shift variants
-  # from copy/paste so keyd can use Ctrl+Shift+C for interrupt (Alt+C).
+  # Native terminal copy/paste (no keyd-application-mapper). Alt+C interrupt is
+  # Ghostty keybind alt+c / ctrl+insert → text:\x03; keyd emits Ctrl+Insert for Alt+C.
   schema='org.gnome.Terminal.Legacy.Keybindings:/org/gnome/terminal/legacy/keybindings/'
   if gsettings list-relocatable-schemas 2>/dev/null | grep -qx 'org.gnome.Terminal.Legacy.Keybindings'; then
     gset "${schema}" copy '<Primary>c'
@@ -450,8 +450,11 @@ configure_terminal_copy_paste() {
     gset "${schema}" close-tab '<Primary><Shift>w'
     gset "${schema}" close-window '<Primary><Shift>q'
   fi
-  # Ptyxis schemas differ by version; best-effort only.
-  if gsettings list-schemas 2>/dev/null | grep -qx 'org.gnome.Ptyxis.Keybindings'; then
+  # Ptyxis 47+ uses org.gnome.Ptyxis.Shortcuts (not …Keybindings).
+  if gsettings list-schemas 2>/dev/null | grep -qx 'org.gnome.Ptyxis.Shortcuts'; then
+    gset org.gnome.Ptyxis.Shortcuts copy-clipboard '<Primary>c'
+    gset org.gnome.Ptyxis.Shortcuts paste-clipboard '<Primary>v'
+  elif gsettings list-schemas 2>/dev/null | grep -qx 'org.gnome.Ptyxis.Keybindings'; then
     gset org.gnome.Ptyxis.Keybindings copy '<Primary>c'
     gset org.gnome.Ptyxis.Keybindings paste '<Primary>v'
   fi

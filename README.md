@@ -125,7 +125,7 @@ Homebrew, then the curated casks in `Brewfile.gui`:
 - Dash to Dock on the bottom, always visible (`autohide` left off). Window buttons on the left: close, minimize, maximize
 - WhiteSur GTK, icon, and cursor themes, Inter, and JetBrainsMono Nerd Font
 - Natural scrolling and tap-to-click
-- keyd from the `alternateved/keyd` COPR plus `configure_macos_hotkeys` in `scripts/gnome.sh` so the [shared map](#shared-hotkeys-macos--fedora) matches. Physical Ctrl is never remapped. `keyd-application-mapper` is enabled as a user service and GNOME autostart entry for terminal overrides. Re-running bootstrap restarts keyd and the mapper when they are already running
+- keyd from the `alternateved/keyd` COPR plus `configure_macos_hotkeys` in `scripts/gnome.sh` so the [shared map](#shared-hotkeys-macos--fedora) matches. Physical Ctrl is never remapped. Terminal Ctrl+C/V copy/paste and Alt+C interrupt are native (Ghostty config + Ptyxis/GNOME Terminal gsettings); they do not need `keyd-application-mapper`. The mapper remains optional for close/tab overrides when a GNOME Shell–compatible keyd extension is available.
 - Packaged GNOME extensions: Dash to Dock, AppIndicator, user themes (`gnome-shell-extension-user-theme`), and Blur My Shell. If the Blur My Shell package is missing, the script falls back to `gnome-extensions-cli`
 
 Log out and back in after the first Fedora run so the new groups, keyd, and GNOME extensions apply. If the dock or hotkey did not stick, open a terminal inside the graphical session and run `./scripts/gnome.sh`.
@@ -213,6 +213,6 @@ A Fedora 44 container can execute the Fedora dry-run and `dnf` package-name chec
 - Grok Bot publishes Linux builds (deb, rpm, and AppImage). Fedora installs the rpm from the official stable feed at `https://api2.cursor.sh/updates/api/download/stable/linux-x64/sand`. There is no separate web-app fallback.
 - T3 Code Nightly publishes a Linux desktop build. The release checked while writing this repo had an x86_64 AppImage and a deb, and no rpm. The script prefers an rpm when a nightly includes one, and otherwise installs the AppImage. The terminal installer at `https://t3.codes/install.sh` is a different entry point; this bootstrap installs the desktop app.
 - The Claude Code CPA opt-in assumes an Anthropic-compatible API on the same host. That has not been verified.
-- keyd's terminal override depends on the window class. If Alt+C does not interrupt in a terminal, add the class from `keyd-application-mapper -v` to `dotfiles/keyd/app.conf`.
+- Ghostty Alt+C interrupt is native (`text:\x03`). If copy/paste chords are wrong in Ptyxis, re-run `./scripts/gnome.sh` inside a GNOME session so `org.gnome.Ptyxis.Shortcuts` is applied.
 - WhiteSur, Dash to Dock, and Vicinae's shortcut need a graphical login. `./scripts/gnome.sh` applies them again.
 - Vicinae on Fedora comes from the `quadratech188/vicinae` COPR when available, otherwise https://vicinae.com/install.

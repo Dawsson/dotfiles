@@ -12,7 +12,7 @@ Fedora/GNOME only. macOS keeps native Command/Option. Applied by `scripts/gnome.
 
 Alt alone does nothing (no menu focus). Super alone still opens the GNOME overview (Mission Control).
 
-keyd implements the map in `dotfiles/keyd/default.conf`. Per-app terminal overrides need `keyd-application-mapper` (autostarted by gnome.sh).
+keyd implements the map in `dotfiles/keyd/default.conf`. Terminal Ctrl+C/V and Alt+C are native (Ghostty config + `configure_terminal_copy_paste` in gnome.sh) and do not need `keyd-application-mapper`. Optional close/tab overrides in `app.conf` still need the mapper (GNOME Shell extension; not available on Shell 50 yet).
 
 ## Cheat sheet (what you press)
 
@@ -59,10 +59,10 @@ Write **Alt** where you would press **⌘**, and **Super** where you would press
 | Action | Press |
 |--------|-------|
 | Copy / Paste | **Ctrl+C / Ctrl+V** (same as GUI; with no selection Ctrl+C may still SIGINT) |
-| Interrupt (SIGINT) | **Alt+C** |
-| New tab / window, close tab / quit | Alt+T / N / W / Q |
+| Interrupt (SIGINT) | **Alt+C** (Ghostty: `text:\x03`; keyd emits Ctrl+Insert for Alt+C) |
+| New tab / window, close tab / quit | Alt+T / N / W / Q (needs mapper; best-effort on GNOME 50) |
 
-Physical Ctrl is never rewritten by keyd. Terminal copy/paste is configured in Ghostty + gsettings.
+Physical Ctrl is never rewritten by keyd. Copy/paste and Ghostty Alt+C interrupt are native configs applied by gnome.sh / linked Ghostty config — not `app.conf`.
 
 ## Apply on the desktop
 
@@ -75,7 +75,7 @@ dotup
 ./bootstrap.sh
 ```
 
-Then log out/in once so keyd group membership and the application mapper autostart. If gsettings ran without a session bus, re-run `./scripts/gnome.sh` inside GNOME.
+Then log out/in once so keyd group membership applies. If gsettings ran without a session bus, re-run `./scripts/gnome.sh` inside GNOME. New Ghostty windows pick up the linked config immediately.
 
 ## Gaps vs macOS
 
@@ -83,4 +83,4 @@ Then log out/in once so keyd group membership and the application mapper autosta
 - Hide (⌘H) minimizes; GNOME has no per-app hide.
 - Rectangle-style tiling is macOS-only here.
 - Some Electron apps ignore Ctrl+W / Ctrl+Q.
-- Terminal Alt+C interrupt on Ghostty is solid (`text:\x03`); VTE/Ptyxis best-effort after Ctrl+C is rebound to copy.
+- Terminal Alt+C interrupt is solid in **Ghostty** (`alt+c` / `ctrl+insert` → `text:\x03`). Ptyxis/GNOME Terminal get Ctrl+C/V copy/paste via gsettings; they have no “send ^C” shortcut action, so Alt+C interrupt there is not guaranteed (Ctrl+Insert may still copy in VTE).
