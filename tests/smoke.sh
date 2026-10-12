@@ -81,6 +81,32 @@ fi
 claude_plan="$(DOTFILES_OS=macos ./bootstrap.sh --dry-run --with-claude-cpa --skip-gui --skip-runtimes 2>&1)"
 printf '%s\n' "$claude_plan" | grep -q 'unverified' || fail "claude opt-in was not mentioned"
 
+printf '%s\n' "$mac_plan" | grep -q '1Password extension' || fail "mac plan missing the Helium 1Password extension"
+printf '%s\n' "$fed_plan" | grep -q '1Password extension' || fail "fedora plan missing the Helium 1Password extension"
+printf '%s\n' "$fed_plan" | grep -q 'would bind Shift+Super+Space' || fail "fedora plan missing 1Password Quick Access"
+printf '%s\n' "$fed_plan" | grep -q 'Slack' || fail "fedora plan missing Slack"
+printf '%s\n' "$mac_plan" | grep -q 'gh auth login' || fail "mac plan missing GitHub sign-in"
+printf '%s\n' "$mac_plan" | grep -q 'setup-git is not run' || fail "mac plan should skip gh auth setup-git"
+if printf '%s\n' "$skip_plan" | grep -q 'would bind Shift+Super+Space'; then
+  fail "--skip-gui still plans 1Password Quick Access"
+fi
+if printf '%s\n' "$skip_plan" | grep -q '1Password extension'; then
+  fail "--skip-gui still plans the Helium 1Password extension"
+fi
+
+setup_plan="$(DOTFILES_OS=fedora ./bootstrap.sh --dry-run --setup 2>&1)"
+printf '%s\n' "$setup_plan" | grep -q 'tailscale up' || fail "setup plan missing Tailscale"
+printf '%s\n' "$setup_plan" | grep -q 'gh auth login' || fail "setup plan missing GitHub"
+printf '%s\n' "$setup_plan" | grep -q '1Password' || fail "setup plan missing 1Password"
+if printf '%s\n' "$setup_plan" | grep -q 'Docker Engine'; then
+  fail "--setup still plans package installation"
+fi
+
+skip_setup="$(DOTFILES_OS=macos ./bootstrap.sh --dry-run --skip-setup --skip-gui --skip-runtimes 2>&1)"
+if printf '%s\n' "$skip_setup" | grep -q 'gh auth login'; then
+  fail "--skip-setup still plans GitHub sign-in"
+fi
+
 echo "== dotfiles install in a temp home"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT

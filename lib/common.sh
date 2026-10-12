@@ -16,6 +16,8 @@ fi
 : "${SKIP_RUNTIMES:=0}"
 : "${ONLY_DOTFILES:=0}"
 : "${WITH_CLAUDE_CPA:=0}"
+: "${SKIP_SETUP:=0}"
+: "${SETUP_ONLY:=0}"
 
 log() { printf '==> %s\n' "$*" >&2; }
 warn() { printf 'warning: %s\n' "$*" >&2; }

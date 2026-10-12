@@ -17,6 +17,10 @@ source "${ROOT}/scripts/agents.sh"
 source "${ROOT}/scripts/macos.sh"
 # shellcheck source=scripts/fedora.sh
 source "${ROOT}/scripts/fedora.sh"
+# shellcheck source=scripts/setup.sh
+source "${ROOT}/scripts/setup.sh"
+# shellcheck source=scripts/browser-1password.sh
+source "${ROOT}/scripts/browser-1password.sh"
 
 usage() {
   cat <<'EOF'
@@ -30,6 +34,8 @@ Options:
   --skip-runtimes    Skip mise language and CLI installs
   --only-dotfiles    Only symlink configs and write the Codex CPA config
   --with-claude-cpa  Point Claude Code at the CPA host (unverified)
+  --setup            Only link configs and run the sign-in prompts
+  --skip-setup       Install packages without asking to sign in
   --dry-run          Print actions without changing the system
   -h, --help         Show this help
 
@@ -37,6 +43,7 @@ Examples:
   ./bootstrap.sh
   ./bootstrap.sh --skip-gui
   ./bootstrap.sh --dry-run
+  ./bootstrap.sh --setup
   ./bootstrap.sh --with-claude-cpa
 EOF
 }
@@ -48,6 +55,8 @@ parse_args() {
       --skip-runtimes) SKIP_RUNTIMES=1 ;;
       --only-dotfiles) ONLY_DOTFILES=1 ;;
       --with-claude-cpa) WITH_CLAUDE_CPA=1 ;;
+      --setup) SETUP_ONLY=1 ;;
+      --skip-setup) SKIP_SETUP=1 ;;
       --dry-run) DRY_RUN=1 ;;
       -h | --help)
         usage
@@ -120,15 +129,25 @@ ensure_login_shell() {
 }
 
 print_next_steps() {
+  if [[ "$SKIP_SETUP" == "1" ]]; then
+    cat <<'EOF' >&2
+
+Next:
+  1. Re-run ./bootstrap.sh --setup from a terminal to sign in to 1Password, Tailscale, and GitHub.
+  2. Put the CPA key in ~/.codex/cpa-client-key, or an op:// URI in ~/.codex/cpa-op-ref.
+  3. Codex uses https://devbox-dawson.tail20065d.ts.net/v1 only after Tailscale is up.
+  4. Sign in to Cursor, Grok Bot, T3 Code, and Slack. On Fedora, log out so docker, libvirt, keyd, and GNOME extensions apply.
+EOF
+    return 0
+  fi
   cat <<'EOF' >&2
 
 Next:
-  1. Open a new terminal. Sign in to 1Password, then run `tailscale up`.
-  2. Put the CPA key in ~/.codex/cpa-client-key (chmod 600), or an op:// URI in ~/.codex/cpa-op-ref.
+  1. Open a new terminal so zsh, mise, and cpa.env load.
+  2. Shift+Command+Space opens 1Password Quick Access. On Fedora that chord is Shift+Super+Space.
   3. Codex uses https://devbox-dawson.tail20065d.ts.net/v1 only after Tailscale is up.
   4. Claude Code's Anthropic base URL is opt-in (`--with-claude-cpa`) and unverified.
-  5. Sign in to Cursor, Grok Bot, and T3 Code. On Fedora, run `cua auth login`, then log out so docker, libvirt, keyd, and GNOME extensions apply.
-  6. The README has the full post-install list, what was left out, and known gaps.
+  5. Sign in to Cursor, Grok Bot, T3 Code, and Slack. On Fedora, log out so docker, libvirt, keyd, and GNOME extensions apply.
 EOF
 }
 
@@ -137,10 +156,18 @@ main() {
   if [[ "$(id -u)" -eq 0 && "$DRY_RUN" != "1" ]]; then
     die "Run bootstrap as your user. It will sudo when it needs to."
   fi
+  if [[ "$SETUP_ONLY" == "1" && "$SKIP_SETUP" == "1" ]]; then
+    die "--setup and --skip-setup cannot be used together"
+  fi
   detect_os
   log "bootstrap for ${OS}"
   link_dotfiles
   install_codex_config
+  if [[ "$SETUP_ONLY" == "1" ]]; then
+    run_account_setup
+    print_next_steps
+    return 0
+  fi
   if [[ "$ONLY_DOTFILES" == "1" ]]; then
     print_next_steps
     return 0
@@ -156,6 +183,11 @@ main() {
   fi
   install_agent_clis
   ensure_login_shell
+  if [[ "$SKIP_SETUP" == "1" ]]; then
+    log "skipping interactive account setup"
+  else
+    run_account_setup
+  fi
   print_next_steps
 }
 
