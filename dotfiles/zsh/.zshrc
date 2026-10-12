@@ -281,9 +281,14 @@ if [[ -d "$HOME/.grok/completions/zsh" ]]; then
   autoload -Uz compinit && compinit -C
 fi
 
-# Pull origin/main and run bootstrap again. Pass bootstrap flags through, for example: dotup --skip-gui
+# Terminal command, not a key. Pass bootstrap flags through, for example: dotup --skip-gui
 dotup() {
-  local link root
+  local bin link root
+  bin="${HOME}/.local/bin/dotup"
+  if [[ -x "$bin" ]]; then
+    "$bin" "$@"
+    return
+  fi
   link="${HOME}/.zshrc"
   if [[ ! -L "$link" ]]; then
     printf 'dotup: ~/.zshrc is not a symlink into the dotfiles repo\n' >&2

@@ -297,17 +297,18 @@ install_ulauncher() {
 }
 
 configure_ulauncher() {
-  local config cmd daemon
+  local config cmd daemon launcher
   # GNOME launches this with a small PATH. An absolute path is the reliable form.
+  # The helper starts the daemon, then toggles, so the first press still opens.
+  launcher="${HOME}/.local/bin/dawsson-ulauncher"
   cmd="/usr/bin/ulauncher-toggle"
   daemon="/usr/bin/ulauncher"
   if [[ "$DRY_RUN" == "1" ]]; then
-    log "would bind Super+Space to ${cmd} via F14 and clear GNOME's input-source binding"
+    log "would bind Super+Space to ${launcher} (${cmd}) and clear GNOME's input-source binding"
     return 0
   fi
-  if have ulauncher-toggle; then
-    cmd="$(command -v ulauncher-toggle)"
-  fi
+  mkdir -p "${HOME}/.local/bin"
+  ln -sfn "${DOTFILES_ROOT}/scripts/ulauncher-show.sh" "$launcher"
   if have ulauncher; then
     daemon="$(command -v ulauncher)"
   fi
@@ -339,9 +340,9 @@ EOF
   gset org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/ulauncher/ \
     name 'Ulauncher'
   gset org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/ulauncher/ \
-    command "$cmd"
+    command "$launcher"
   gset org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/ulauncher/ \
-    binding '<F14>'
+    binding '<Super>space'
 }
 
 configure_1password_quick_access() {

@@ -172,11 +172,11 @@ EOF
 
 Next:
   1. On Fedora, log out and back in so the login shell is zsh and cpa.env loads. Until then, bash still sources ~/.codex/cpa.env from ~/.bashrc.
-  2. Shift+Command+Space opens 1Password Quick Access. On Fedora that chord is Shift+Super+Space. Super+W closes a tab and Super+Q quits, same as Command+W and Command+Q on the Mac.
+  2. On Fedora, Super+Space opens Ulauncher. Super+W closes the current tab or window and leaves the app running when the app does that. It is not minimize and it is not Alt+F4. Super+Q quits the app. Shift+Super+Space opens 1Password Quick Access.
   3. Codex uses https://devbox-dawson.tail20065d.ts.net/v1 only after Tailscale is up.
   4. Claude Code's Anthropic base URL is opt-in (`--with-claude-cpa`) and unverified.
   5. Sign in to Cursor, Grok Bot, T3 Code, and Slack. On Fedora, log out so the zsh login shell, docker, libvirt, keyd, and GNOME extensions apply.
-  6. Later, run dotup to pull the latest dotfiles from GitHub and run this script again.
+  6. dotup is a command you type, not a key. Open a new terminal and run: dotup
 EOF
 }
 

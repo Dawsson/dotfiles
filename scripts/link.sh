@@ -51,6 +51,7 @@ link_dotfiles() {
   link_file "${DOTFILES_ROOT}/dotfiles/starship/starship.toml" "${HOME}/.config/starship.toml"
   link_file "${DOTFILES_ROOT}/dotfiles/mise/config.toml" "${HOME}/.config/mise/config.toml"
   link_file "${DOTFILES_ROOT}/dotfiles/codex/cpa.env" "${HOME}/.codex/cpa.env"
+  link_file "${DOTFILES_ROOT}/scripts/dotup.sh" "${HOME}/.local/bin/dotup"
   case "$OS" in
     macos)
       link_file "${DOTFILES_ROOT}/dotfiles/ghostty/config" \
