@@ -9,6 +9,9 @@ import SwiftUI
     @Published var error: String?
     @Published var costError: String?
     @Published var fetchedAt: Date?
+    /// Banked ChatGPT resets by authIndex. The server caches these for 30 minutes.
+    @Published var resets: [String: ResetCredits] = [:]
+    private var resetsFetchedAt = Date.distantPast
     private var lastAttempt = Date.distantPast
     private let session = URLSession(configuration: .ephemeral)
     // Poll independently of the window so the menu bar label stays current.
@@ -42,6 +45,13 @@ import SwiftUI
             dashboard = try await request("", as: Dashboard.self)
             fetchedAt = Date(); error = nil
         } catch { self.error = message(error) }
+        if Date().timeIntervalSince(resetsFetchedAt) > 600, let accounts = dashboard?.credentials {
+            resetsFetchedAt = Date()
+            for account in accounts where account.provider == "codex" {
+                // Accounts ChatGPT will not list simply show no resets.
+                resets[account.authIndex] = try? await request("/reset-credits?authIndex=" + account.authIndex, as: ResetCredits.self)
+            }
+        }
         do { costs = try await request("/costs?days=30", as: Costs.self); costError = nil }
         catch { costError = message(error) }
     }
