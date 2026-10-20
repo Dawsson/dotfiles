@@ -11,11 +11,11 @@ Native SwiftUI, system appearance. One compact window, no scrolling: total usage
 
 ## Menu bar label
 
-A rendered template image, not a static symbol: one two-line stack per provider (`CL`, `GPT`, `GRK` above the percentage). Each value is the best active account's tightest window, which is how much the proxy can still route to that provider. A dot after the abbreviation marks 10% or less. Before data arrives it falls back to the `gauge.with.dots.needle.33percent` symbol. The Store polls every 60 seconds whether or not the window is open.
+A rendered template image: each provider's logo followed by its percentage, like OpenUsage, and nothing else. Each value is the average across all of that provider's accounts, disabled ones included, with each account counted by its tightest window. Before data arrives it falls back to the `gauge.with.dots.needle.33percent` symbol. The Store polls every 60 seconds whether or not the window is open.
 
 ## Colors
 
-System semantic colors. Provider accents: orange for Claude, teal for Codex, purple for others. These mark section headers and meter fills. A meter at or below 10% turns red, percentage included. Green dot for active accounts; disabled accounts render at 50% opacity with a secondary dot. Notices are orange. The usage chart uses primary at 35% opacity.
+System semantic colors. Section headers use the real provider logos (`Logo.swift`, LobeHub icons): Claude in its brand orange, OpenAI and Grok in the text color. Meter fills use orange for Claude, teal for Codex, purple for others. A meter at or below 10% turns red, percentage included. Green dot for active accounts; disabled accounts render at 50% opacity with a secondary dot. Notices are orange. The usage chart uses primary at 35% opacity.
 
 ## Typography
 
