@@ -1,172 +1,207 @@
 import AppKit
+import Charts
 import Combine
 import SwiftUI
-import Charts
 
 @main struct DXStatusApp: App {
     @StateObject private var store = Store()
     var body: some Scene {
-        MenuBarExtra("DX Status", systemImage: "chart.bar.xaxis") {
+        MenuBarExtra {
             StatusView(store: store)
+        } label: {
+            MenuBarLabel(store: store)
         }.menuBarExtraStyle(.window)
     }
 }
-struct StatusView: View {
-    @ObservedObject var store: Store
-    private let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
-    var accounts: [Account] {
-        (store.dashboard?.credentials ?? []).filter { store.filter == "All" || $0.title == store.filter }
-            .sorted { a, b in a.title == b.title ? (a.email ?? a.name) < (b.email ?? b.name) : a.title < b.title }
-    }
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack(alignment: .center) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Proxy Status").font(.system(size: 19, weight: .semibold))
-                    HStack(spacing: 5) {
-                        Circle().fill(store.error == nil ? Color.green : Color.orange).frame(width: 6, height: 6)
-                        Text("CLI Proxy API").font(.caption).foregroundStyle(.secondary)
-                        if let date = store.fetchedAt { Text(date, style: .relative).font(.caption).foregroundStyle(.secondary) }
-                    }
-                }
-                Spacer()
-                if store.loading { ProgressView().controlSize(.small) }
-                Button { Task { await store.refresh() } } label: { Image(systemName: "arrow.clockwise") }
-                    .buttonStyle(.borderless).help("Refresh proxy data").accessibilityLabel("Refresh proxy data").disabled(store.loading)
-            }.padding(20)
-            Divider()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    if let error = store.error { notice(error) }
-                    if let costs = store.costs { spending(costs) }
-                    if let error = store.costError { notice("Spending: " + error) }
-                    if store.dashboard == nil && store.loading { Text("Reading your proxy accounts…").foregroundStyle(.secondary) }
-                    if let dashboard = store.dashboard {
-                        HStack {
-                            Text("Accounts").font(.headline)
-                            Text("\(dashboard.credentials.count)").foregroundStyle(.secondary)
-                            Spacer()
-                            Text("\(dashboard.credentials.filter { !$0.unavailable }.count) available").font(.caption).foregroundStyle(.secondary)
-                        }
-                        Picker("Provider", selection: $store.filter) {
-                            Text("All").tag("All")
-                            ForEach(Array(Set(dashboard.credentials.map(\.title))).sorted(), id: \.self) { Text($0).tag($0) }
-                        }.pickerStyle(.segmented)
-                        if dashboard.credentials.isEmpty { Text("No accounts are connected to the proxy.").foregroundStyle(.secondary) }
-                        ForEach(accounts) { account in
-                            AccountView(account: account)
-                            Divider()
-                        }
-                        if !dashboard.errors.isEmpty {
-                            DisclosureGroup("Proxy notices (\(dashboard.errors.count))") {
-                                ForEach(dashboard.errors, id: \.self) { Text($0).font(.caption).foregroundStyle(.secondary).textSelection(.enabled) }
-                            }
-                        }
-                    }
-                }.padding(20)
-            }.frame(height: 590)
-            Divider()
-            HStack {
-                Link("Open proxy dashboard", destination: URL(string: "https://devbox.buildwithharbor.com/dash/cpa")!)
-                Spacer()
-                Button("Quit") { NSApplication.shared.terminate(nil) }.buttonStyle(.borderless)
-            }.font(.caption).padding(.horizontal, 20).padding(.vertical, 14)
-        }.frame(width: 440)
-            .task { await store.refresh() }
-            .onReceive(timer) { _ in Task { await store.refresh() } }
-    }
-    func notice(_ text: String) -> some View {
-        Label(text, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
-    }
-    func spending(_ costs: Costs) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Proxy usage").font(.headline)
-                Spacer()
-                Text("30 days").font(.caption).foregroundStyle(.secondary)
-            }
-            HStack(alignment: .firstTextBaseline) {
-                Text((costs.complete ? "" : "≥ ") + money(costs.total)).font(.system(size: 28, weight: .semibold, design: .rounded)).monospacedDigit()
-                Spacer()
-                VStack(alignment: .trailing, spacing: 3) {
-                    Text(compact(costs.tokens) + " tokens").font(.subheadline).monospacedDigit()
-                    Text(compact(costs.requests) + " requests").font(.caption).foregroundStyle(.secondary)
-                }
-            }
-            Chart(costs.daily) { day in
-                BarMark(x: .value("Date", String(day.at.prefix(10))), y: .value("Estimated USD", day.estimatedUsd))
-                    .foregroundStyle(Color.accentColor.opacity(0.8)).cornerRadius(2)
-            }.chartXAxis(.hidden).chartYAxis(.hidden).frame(height: 46)
-                .accessibilityLabel("Daily estimated proxy spending over the last 30 days")
-            if let today = costs.today {
-                HStack { Text("Today"); Spacer(); Text((today.complete ? "" : "≥ ") + money(today.estimatedUsd)); Text("· " + compact(today.tokens) + " tokens").foregroundStyle(.secondary) }.font(.caption).monospacedDigit()
-            }
-            Text("API-rate estimate · shared proxy traffic, not your subscription bill" + (costs.complete ? "" : " · some models unpriced"))
-                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            if costs.stale || store.costError != nil { notice("Showing previously collected spending.") }
-            DisclosureGroup("Spending by model") {
-                VStack(spacing: 10) {
-                    ForEach(costs.models) { model in
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) { Text(model.model); Text(compact(model.tokens) + " tokens").foregroundStyle(.secondary) }
-                            Spacer()
-                            Text(model.estimatedUsd.map { (model.complete ? "" : "≥ ") + money($0) } ?? "Unpriced").monospacedDigit()
-                        }.font(.caption)
-                    }
-                }.padding(.top, 8)
-            }.font(.caption)
+
+/// Best remaining headroom per provider: the most-available active account's tightest window.
+struct Headroom: Identifiable {
+    let id, short: String
+    let fraction: Double
+    static func from(_ accounts: [Account]) -> [Headroom] {
+        [("claude", "CL"), ("codex", "GPT"), ("xai", "GRK")].compactMap { provider, short in
+            let best = accounts.filter { $0.provider == provider && !$0.unavailable && !$0.windows.isEmpty }
+                .map { $0.windows.map(\.fraction).min() ?? 0 }.max()
+            return best.map { Headroom(id: provider, short: short, fraction: $0) }
         }
     }
 }
-struct AccountView: View {
-    let account: Account
-    var accent: Color { account.provider == "claude" ? .orange : account.provider == "codex" ? .teal : .purple }
+
+struct MenuBarLabel: View {
+    @ObservedObject var store: Store
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(account.title).font(.system(size: 15, weight: .semibold))
-                    Text(account.email ?? account.name).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
-                }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 3) {
-                    Text(account.status.capitalized).foregroundStyle(account.unavailable ? Color.secondary : Color.green)
-                    Text(account.plan).foregroundStyle(.secondary)
-                }.font(.caption)
-            }
-            if account.unavailable { Text("Unavailable for routing · quota is the last reported value").font(.caption).foregroundStyle(.secondary) }
-            ForEach(account.windows) { quota in
-                VStack(spacing: 5) {
-                    HStack {
-                        Text(quota.label).font(.caption)
-                        Spacer()
-                        Text("\(Int((quota.fraction * 100).rounded()))% left").font(.caption.weight(.semibold)).monospacedDigit()
-                    }
-                    ProgressView(value: quota.fraction).tint(quota.fraction <= 0.1 ? .red : accent)
-                        .accessibilityLabel(quota.label).accessibilityValue("\(Int((quota.fraction * 100).rounded())) percent remaining")
-                    HStack { Spacer(); Text(resetLabel(quota.resetAt)).font(.system(size: 11)).foregroundStyle(.secondary) }
-                }
-            }
-            if account.windows.isEmpty { Text("Quota not reported by the proxy").font(.caption).foregroundStyle(.secondary) }
-            if let billing = account.billing {
-                if let balance = billing.prepaidBalanceUsd { detail("Prepaid balance", money(balance)) }
-                if let used = billing.onDemandUsedUsd { detail("On-demand used", money(used)) }
-                if let limit = billing.onDemandLimitUsd { detail("On-demand limit", money(limit)) }
-            }
-            if let usage = account.cursorUsage {
-                DisclosureGroup("Cursor usage") {
-                    VStack(spacing: 8) {
-                        detail("Today", money(usage.today.costUsd) + " · " + compact(usage.today.tokens) + " tokens")
-                        detail("30 days", money(usage.last30Days.costUsd) + " · " + compact(usage.last30Days.tokens) + " tokens")
-                        if let error = usage.error { Text(error).font(.caption).foregroundStyle(.secondary) }
-                    }.padding(.top, 8)
-                }.font(.caption)
-            }
-            if let message = account.statusMessage, !message.isEmpty { Text(message).font(.caption).foregroundStyle(.secondary) }
-            if let retry = account.nextRetryAfter { Text("Retry: " + retry).font(.caption).foregroundStyle(.secondary) }
+        let items = Headroom.from(store.dashboard?.credentials ?? [])
+        if items.isEmpty {
+            Image(systemName: "gauge.with.dots.needle.33percent")
+        } else {
+            Image(nsImage: render(items)).accessibilityLabel(items.map { "\($0.short) \(Int(($0.fraction * 100).rounded())) percent" }.joined(separator: ", "))
         }
     }
-    func detail(_ label: String, _ value: String) -> some View {
-        HStack { Text(label).foregroundStyle(.secondary); Spacer(); Text(value).monospacedDigit() }.font(.caption)
+    @MainActor func render(_ items: [Headroom]) -> NSImage {
+        let view = HStack(spacing: 7) {
+            ForEach(items) { item in
+                VStack(alignment: .leading, spacing: 1) {
+                    HStack(spacing: 2) {
+                        Text(item.short).font(.system(size: 7.5, weight: .bold)).opacity(0.75)
+                        if item.fraction <= 0.1 { Circle().frame(width: 3, height: 3) }
+                    }
+                    Text("\(Int((item.fraction * 100).rounded()))%").font(.system(size: 10.5, weight: .semibold)).monospacedDigit()
+                }
+            }
+        }.foregroundStyle(.black).frame(height: 22)
+        let renderer = ImageRenderer(content: view)
+        renderer.scale = NSScreen.main?.backingScaleFactor ?? 2
+        let image = renderer.nsImage ?? NSImage()
+        image.isTemplate = true
+        return image
+    }
+}
+
+struct StatusView: View {
+    @ObservedObject var store: Store
+    var credentials: [Account] { store.dashboard?.credentials ?? [] }
+    var groups: [(title: String, accounts: [Account])] {
+        Dictionary(grouping: credentials, by: \.title).sorted { $0.key < $1.key }
+            .map { ($0.key, $0.value.sorted { ($0.unavailable ? 1 : 0, $0.shortEmail) < ($1.unavailable ? 1 : 0, $1.shortEmail) }) }
+    }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            header.padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 12)
+            if let error = store.error { notice(error).padding(.horizontal, 16).padding(.bottom, 10) }
+            Divider()
+            VStack(alignment: .leading, spacing: 14) {
+                if store.dashboard == nil && store.loading { Text("Reading your accounts…").font(.callout).foregroundStyle(.secondary) }
+                if store.dashboard != nil && credentials.isEmpty { Text("No accounts are connected.").font(.callout).foregroundStyle(.secondary) }
+                ForEach(groups, id: \.title) { group in ProviderSection(title: group.title, accounts: group.accounts) }
+            }.padding(16)
+            Divider()
+            HStack {
+                Link("Open dashboard", destination: URL(string: "https://devbox.buildwithharbor.com/dash/cpa")!)
+                Spacer()
+                Button("Quit") { NSApplication.shared.terminate(nil) }.buttonStyle(.borderless)
+            }.font(.caption).foregroundStyle(.secondary).padding(.horizontal, 16).padding(.vertical, 10)
+        }.frame(width: 420)
+            .task { await store.refresh() }
+    }
+    var header: some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Usage · 30 days").font(.caption).foregroundStyle(.secondary)
+                Text(money(usageTotal(store.costs, credentials)))
+                    .font(.system(size: 26, weight: .semibold, design: .rounded)).monospacedDigit()
+                    .contentTransition(.numericText())
+                HStack(spacing: 4) {
+                    Text("Today " + money(usageToday(store.costs, credentials)))
+                    if let costs = store.costs { Text("· " + compact(costs.tokens) + " tokens") }
+                }.font(.caption).foregroundStyle(.secondary).monospacedDigit()
+            }
+            Spacer(minLength: 8)
+            VStack(alignment: .trailing, spacing: 6) {
+                Button { Task { await store.refresh() } } label: {
+                    if store.loading { ProgressView().controlSize(.mini) } else { Image(systemName: "arrow.clockwise") }
+                }.buttonStyle(.borderless).frame(width: 16, height: 16)
+                    .help("Refresh").accessibilityLabel("Refresh").disabled(store.loading)
+                if let costs = store.costs, !costs.daily.isEmpty {
+                    Chart(costs.daily) { day in
+                        BarMark(x: .value("Date", String(day.at.prefix(10))), y: .value("USD", day.estimatedUsd))
+                            .foregroundStyle(Color.primary.opacity(0.35)).cornerRadius(1.5)
+                    }.chartXAxis(.hidden).chartYAxis(.hidden).frame(width: 150, height: 34)
+                        .accessibilityLabel("Daily usage over the last 30 days")
+                }
+            }
+        }
+    }
+    func notice(_ text: String) -> some View {
+        Label(text, systemImage: "exclamationmark.triangle.fill").font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+struct ProviderSection: View {
+    let title: String
+    let accounts: [Account]
+    var accent: Color { accounts.first.map { $0.provider == "claude" ? .orange : $0.provider == "codex" ? .teal : .purple } ?? .accentColor }
+    /// Union of window ids in first-seen order, so meters line up across accounts.
+    var slots: [String] {
+        var seen: [String] = []
+        for quota in accounts.flatMap(\.windows) where !seen.contains(quota.id) { seen.append(quota.id) }
+        return seen
+    }
+    func column(_ label: String) -> some View {
+        Text(label).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
+    }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                HStack(spacing: 6) {
+                    RoundedRectangle(cornerRadius: 2).fill(accent).frame(width: 8, height: 8)
+                    Text(title).font(.system(size: 12, weight: .semibold))
+                    Text("\(accounts.count)").font(.caption).foregroundStyle(.tertiary)
+                }.frame(width: 118, alignment: .leading)
+                HStack(spacing: 10) {
+                    ForEach(slots, id: \.self) { slot in column(accounts.flatMap(\.windows).first { $0.id == slot }?.shortLabel ?? slot) }
+                    if accounts.contains(where: { $0.cursorUsage != nil }) { column("30 days") }
+                }
+            }
+            VStack(spacing: 10) {
+                ForEach(accounts) { account in AccountRow(account: account, slots: slots, accent: accent) }
+            }
+        }
+    }
+}
+
+struct AccountRow: View {
+    let account: Account
+    let slots: [String]
+    let accent: Color
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(account.shortEmail).font(.system(size: 12)).lineLimit(1).truncationMode(.middle)
+                    .help(account.email ?? account.name)
+                HStack(spacing: 4) {
+                    Circle().fill(account.unavailable ? Color.secondary : Color.green).frame(width: 5, height: 5)
+                    Text(account.unavailable ? account.status.capitalized : account.billing?.plan ?? "Active")
+                        .lineLimit(1)
+                }.font(.system(size: 10)).foregroundStyle(.secondary)
+            }.frame(width: 118, alignment: .leading)
+            HStack(alignment: .top, spacing: 10) {
+                ForEach(slots, id: \.self) { slot in
+                    if let quota = account.windows.first(where: { $0.id == slot }) {
+                        Meter(quota: quota, accent: accent)
+                    } else {
+                        Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
+                    }
+                }
+                if let usage = account.cursorUsage {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(money(usage.last30Days.costUsd)).font(.system(size: 11, weight: .semibold))
+                        Text(compact(usage.last30Days.tokens) + " tokens").font(.system(size: 10)).foregroundStyle(.secondary)
+                    }.monospacedDigit().frame(maxWidth: .infinity, alignment: .leading)
+                }
+                if slots.isEmpty && account.cursorUsage == nil {
+                    Text("Quota not reported").font(.system(size: 10)).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }.opacity(account.unavailable ? 0.5 : 1)
+    }
+}
+
+struct Meter: View {
+    let quota: Quota
+    let accent: Color
+    var low: Bool { quota.fraction <= 0.1 }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(quota.percent).font(.system(size: 11, weight: .semibold)).foregroundStyle(low ? Color.red : Color.primary)
+            GeometryReader { proxy in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.primary.opacity(0.1))
+                    Capsule().fill(low ? Color.red : accent).frame(width: max(quota.fraction > 0 ? 3 : 0, proxy.size.width * quota.fraction))
+                }
+            }.frame(height: 4)
+            Text(shortReset(quota.resetAt)).font(.system(size: 10)).foregroundStyle(.tertiary).lineLimit(1)
+        }.monospacedDigit().frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(quota.label).accessibilityValue("\(quota.percent) remaining, resets in \(shortReset(quota.resetAt))")
     }
 }
