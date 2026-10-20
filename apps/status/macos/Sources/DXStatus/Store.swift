@@ -11,6 +11,15 @@ import SwiftUI
     @Published var fetchedAt: Date?
     private var lastAttempt = Date.distantPast
     private let session = URLSession(configuration: .ephemeral)
+    // Poll independently of the window so the menu bar label stays current.
+    init() {
+        Task { [weak self] in
+            while let self {
+                await self.refresh()
+                try? await Task.sleep(for: .seconds(60))
+            }
+        }
+    }
     // The existing Devbox credential authorizes its CPA facade. Provider tokens and
     // the proxy management credential stay on the server.
     func request<T: Decodable>(_ path: String, as: T.Type) async throws -> T {
