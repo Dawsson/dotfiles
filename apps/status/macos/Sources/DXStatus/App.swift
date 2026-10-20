@@ -14,19 +14,6 @@ import SwiftUI
     }
 }
 
-/// Best remaining headroom per provider: the most-available active account's tightest window.
-struct Headroom: Identifiable {
-    let id, name: String
-    let fraction: Double
-    static func from(_ accounts: [Account]) -> [Headroom] {
-        [("claude", "Claude"), ("codex", "Codex"), ("xai", "Grok")].compactMap { provider, name in
-            let best = accounts.filter { $0.provider == provider && !$0.unavailable && !$0.windows.isEmpty }
-                .map { $0.windows.map(\.fraction).min() ?? 0 }.max()
-            return best.map { Headroom(id: provider, name: name, fraction: $0) }
-        }
-    }
-}
-
 struct MenuBarLabel: View {
     @ObservedObject var store: Store
     var body: some View {

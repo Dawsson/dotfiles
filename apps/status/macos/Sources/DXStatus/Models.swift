@@ -98,3 +98,17 @@ func shortReset(_ value: String?) -> String {
     let label = resetLabel(value)
     return label.hasPrefix("Resets in ") ? String(label.dropFirst(10)) : "—"
 }
+/// Average remaining quota per provider across all of its accounts, disabled ones included.
+/// Each account counts by its tightest window.
+struct Headroom: Identifiable {
+    let id, name: String
+    let fraction: Double
+    static func from(_ accounts: [Account]) -> [Headroom] {
+        [("claude", "Claude"), ("codex", "Codex"), ("xai", "Grok")].compactMap { provider, name in
+            let tightest = accounts.filter { $0.provider == provider && !$0.windows.isEmpty }
+                .map { $0.windows.map(\.fraction).min() ?? 0 }
+            guard !tightest.isEmpty else { return nil }
+            return Headroom(id: provider, name: name, fraction: tightest.reduce(0, +) / Double(tightest.count))
+        }
+    }
+}

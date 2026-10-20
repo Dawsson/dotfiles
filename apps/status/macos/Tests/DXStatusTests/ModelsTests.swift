@@ -11,7 +11,8 @@ func XCTAssertNil<T>(_ a: T?) { precondition(a == nil) }
         try tests.testUnknownCostIsNotZeroOrComplete()
         try tests.testMissingPlanAndDisabledAccountPreserved()
         try tests.testCursorUsageCountsTowardTotal()
-        print("4 model checks passed")
+        try tests.testHeadroomAveragesAllAccounts()
+        print("5 model checks passed")
     }
     func testQuotaClampingAndMissingReset() throws {
         let quota = try JSONDecoder().decode(Quota.self, from: Data(#"{"id":"week","label":"Weekly","remaining":-0.2,"cap":1,"resetAt":null}"#.utf8))
@@ -38,5 +39,15 @@ func XCTAssertNil<T>(_ a: T?) { precondition(a == nil) }
         XCTAssertEqual(usageTotal(costs, [account]), 102.5)
         XCTAssertEqual(usageToday(costs, [account]), 1.5)
         XCTAssertEqual(account.shortEmail, "hel…@dawson.gg")
+    }
+    func testHeadroomAveragesAllAccounts() throws {
+        func account(_ id: String, _ unavailable: Bool, _ fractions: [Double]) throws -> Account {
+            let windows = fractions.enumerated().map { #"{"id":"w\#($0.offset)","label":"W","remaining":\#($0.element),"cap":1,"resetAt":null}"# }.joined(separator: ",")
+            return try JSONDecoder().decode(Account.self, from: Data(#"{"authIndex":"\#(id)","name":"\#(id)","provider":"codex","status":"x","unavailable":\#(unavailable),"windows":[\#(windows)]}"#.utf8))
+        }
+        let accounts = [try account("a", false, [0.2, 0.9]), try account("b", true, [0.6]), try account("c", false, [])]
+        let headroom = Headroom.from(accounts)
+        XCTAssertEqual(headroom.count, 1)
+        XCTAssertTrue(abs(headroom[0].fraction - 0.4) < 1e-9)
     }
 }
