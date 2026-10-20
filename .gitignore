@@ -5,3 +5,5 @@ __pycache__/
 *.pyc
 # Rust (apps/status workspace)
 **/target/
+# Native macOS status app
+apps/status/macos/.build/

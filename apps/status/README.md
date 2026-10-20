@@ -1,6 +1,8 @@
 # Status app (`dx` / `dx-tray`)
 
-Rust workspace for the machine/dotfiles CLI and a menubar/tray stub.
+Rust workspace for the machine/dotfiles CLI and Linux tray stub.
+
+The native macOS menu bar app is [DX Status](macos/README.md), with CLI Proxy API accounts, quotas, resets, and spending. Install it with `./apps/status/macos/install.sh` from the repo root.
 Lives **in this dotfiles repo** under `apps/status/`.
 
 | Binary | Crate | Role |
