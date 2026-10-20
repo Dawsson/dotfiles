@@ -72,3 +72,29 @@ func resetLabel(_ value: String?) -> String {
     if hours > 0 { return "Resets in \(hours)h \(minutes % 60)m" }
     return "Resets in \(minutes)m"
 }
+extension Account {
+    var cursorCost: Double { cursorUsage?.last30Days.costUsd ?? 0 }
+    var shortEmail: String {
+        let text = email ?? name
+        guard let at = text.firstIndex(of: "@") else { return text }
+        let local = text[..<at]
+        return local.count > 4 ? local.prefix(3) + "…" + text[at...] : text
+    }
+}
+extension Quota {
+    var shortLabel: String {
+        ["5-hour limit": "5h", "7-day limit": "Week", "7-day credits": "Week", "Cloud session credits": "Cloud", "7-day Fable": "Fable"][label] ?? label
+    }
+    var percent: String { "\(Int((fraction * 100).rounded()))%" }
+}
+/// Proxy spending plus usage that Cursor-priced accounts report directly.
+func usageTotal(_ costs: Costs?, _ accounts: [Account]) -> Double {
+    (costs?.total ?? 0) + accounts.map(\.cursorCost).reduce(0, +)
+}
+func usageToday(_ costs: Costs?, _ accounts: [Account]) -> Double {
+    (costs?.today?.estimatedUsd ?? 0) + accounts.compactMap { $0.cursorUsage?.today.costUsd }.reduce(0, +)
+}
+func shortReset(_ value: String?) -> String {
+    let label = resetLabel(value)
+    return label.hasPrefix("Resets in ") ? String(label.dropFirst(10)) : "—"
+}

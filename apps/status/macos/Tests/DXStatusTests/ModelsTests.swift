@@ -10,7 +10,8 @@ func XCTAssertNil<T>(_ a: T?) { precondition(a == nil) }
         try tests.testQuotaClampingAndMissingReset()
         try tests.testUnknownCostIsNotZeroOrComplete()
         try tests.testMissingPlanAndDisabledAccountPreserved()
-        print("3 model checks passed")
+        try tests.testCursorUsageCountsTowardTotal()
+        print("4 model checks passed")
     }
     func testQuotaClampingAndMissingReset() throws {
         let quota = try JSONDecoder().decode(Quota.self, from: Data(#"{"id":"week","label":"Weekly","remaining":-0.2,"cap":1,"resetAt":null}"#.utf8))
@@ -30,5 +31,12 @@ func XCTAssertNil<T>(_ a: T?) { precondition(a == nil) }
         XCTAssertEqual(account.plan, "Plan not reported")
         XCTAssertTrue(account.unavailable)
         XCTAssertEqual(account.title, "Codex")
+    }
+    func testCursorUsageCountsTowardTotal() throws {
+        let account = try JSONDecoder().decode(Account.self, from: Data(#"{"authIndex":"x","name":"x.json","provider":"xai","email":"hello@dawson.gg","status":"active","unavailable":false,"windows":[],"cursorUsage":{"today":{"costUsd":1.5,"tokens":10},"last30Days":{"costUsd":100,"tokens":1000},"error":null}}"#.utf8))
+        let costs = try JSONDecoder().decode(Costs.self, from: Data(#"{"observedAt":"2026-10-20T00:00:00Z","timezone":"UTC","complete":false,"stale":false,"models":[{"model":"priced","tokens":20,"requests":1,"estimatedUsd":2.5,"complete":true}],"daily":[]}"#.utf8))
+        XCTAssertEqual(usageTotal(costs, [account]), 102.5)
+        XCTAssertEqual(usageToday(costs, [account]), 1.5)
+        XCTAssertEqual(account.shortEmail, "hel…@dawson.gg")
     }
 }
