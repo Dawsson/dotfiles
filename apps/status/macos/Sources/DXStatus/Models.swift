@@ -98,17 +98,21 @@ func shortReset(_ value: String?) -> String {
     let label = resetLabel(value)
     return label.hasPrefix("Resets in ") ? String(label.dropFirst(10)) : "—"
 }
-/// Average remaining quota per provider across all of its accounts, disabled ones included.
-/// Each account counts by its tightest window.
+extension Account {
+    /// Windows worth showing; Claude's Fable and cloud-session credits are noise.
+    var shownWindows: [Quota] { windows.filter { !$0.label.contains("Fable") && !$0.label.hasPrefix("Cloud") } }
+    var weekly: Quota? { windows.first { $0.label == "7-day limit" || $0.label == "7-day credits" } }
+}
+/// Combined weekly quota per provider: remaining over cap, pooled across every account, disabled ones included.
 struct Headroom: Identifiable {
     let id, name: String
     let fraction: Double
     static func from(_ accounts: [Account]) -> [Headroom] {
         [("claude", "Claude"), ("codex", "Codex"), ("xai", "Grok")].compactMap { provider, name in
-            let tightest = accounts.filter { $0.provider == provider && !$0.windows.isEmpty }
-                .map { $0.windows.map(\.fraction).min() ?? 0 }
-            guard !tightest.isEmpty else { return nil }
-            return Headroom(id: provider, name: name, fraction: tightest.reduce(0, +) / Double(tightest.count))
+            let weekly = accounts.filter { $0.provider == provider }.compactMap(\.weekly).filter { $0.cap > 0 && $0.cap.isFinite }
+            guard !weekly.isEmpty else { return nil }
+            let remaining = weekly.map { min($0.cap, max(0, $0.remaining.isFinite ? $0.remaining : 0)) }.reduce(0, +)
+            return Headroom(id: provider, name: name, fraction: remaining / weekly.map(\.cap).reduce(0, +))
         }
     }
 }

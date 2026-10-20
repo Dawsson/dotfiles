@@ -11,7 +11,7 @@ func XCTAssertNil<T>(_ a: T?) { precondition(a == nil) }
         try tests.testUnknownCostIsNotZeroOrComplete()
         try tests.testMissingPlanAndDisabledAccountPreserved()
         try tests.testCursorUsageCountsTowardTotal()
-        try tests.testHeadroomAveragesAllAccounts()
+        try tests.testHeadroomPoolsWeeklyAcrossAllAccounts()
         print("5 model checks passed")
     }
     func testQuotaClampingAndMissingReset() throws {
@@ -40,14 +40,19 @@ func XCTAssertNil<T>(_ a: T?) { precondition(a == nil) }
         XCTAssertEqual(usageToday(costs, [account]), 1.5)
         XCTAssertEqual(account.shortEmail, "hel…@dawson.gg")
     }
-    func testHeadroomAveragesAllAccounts() throws {
-        func account(_ id: String, _ unavailable: Bool, _ fractions: [Double]) throws -> Account {
-            let windows = fractions.enumerated().map { #"{"id":"w\#($0.offset)","label":"W","remaining":\#($0.element),"cap":1,"resetAt":null}"# }.joined(separator: ",")
-            return try JSONDecoder().decode(Account.self, from: Data(#"{"authIndex":"\#(id)","name":"\#(id)","provider":"codex","status":"x","unavailable":\#(unavailable),"windows":[\#(windows)]}"#.utf8))
+    func testHeadroomPoolsWeeklyAcrossAllAccounts() throws {
+        func account(_ id: String, _ unavailable: Bool, _ windows: [(String, Double, Double)]) throws -> Account {
+            let json = windows.map { #"{"id":"\#($0.0)","label":"\#($0.0)","remaining":\#($0.1),"cap":\#($0.2),"resetAt":null}"# }.joined(separator: ",")
+            return try JSONDecoder().decode(Account.self, from: Data(#"{"authIndex":"\#(id)","name":"\#(id)","provider":"claude","status":"x","unavailable":\#(unavailable),"windows":[\#(json)]}"#.utf8))
         }
-        let accounts = [try account("a", false, [0.2, 0.9]), try account("b", true, [0.6]), try account("c", false, [])]
+        let accounts = [
+            try account("a", false, [("5-hour limit", 0, 1), ("7-day limit", 0.2, 1), ("7-day Fable", 1, 1)]),
+            try account("b", true, [("7-day limit", 3, 3), ("Cloud session credits", 0, 1)]),
+        ]
         let headroom = Headroom.from(accounts)
         XCTAssertEqual(headroom.count, 1)
-        XCTAssertTrue(abs(headroom[0].fraction - 0.4) < 1e-9)
+        XCTAssertTrue(abs(headroom[0].fraction - 0.8) < 1e-9)
+        XCTAssertEqual(accounts[0].shownWindows.map(\.label), ["5-hour limit", "7-day limit"])
+        XCTAssertEqual(accounts[1].shownWindows.map(\.label), ["7-day limit"])
     }
 }

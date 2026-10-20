@@ -11,7 +11,7 @@ Native SwiftUI, system appearance. One compact window, no scrolling: total usage
 
 ## Menu bar label
 
-A rendered template image: each provider's logo followed by its percentage, like OpenUsage, and nothing else. Each value is the average across all of that provider's accounts, disabled ones included, with each account counted by its tightest window. Before data arrives it falls back to the `gauge.with.dots.needle.33percent` symbol. The Store polls every 60 seconds whether or not the window is open.
+A rendered template image: each provider's logo followed by its percentage, like OpenUsage, and nothing else. Each value is the provider's combined weekly quota: weekly remaining over weekly cap, pooled across every account, disabled ones included. The 5-hour window is ignored. Before data arrives it falls back to the `gauge.with.dots.needle.33percent` symbol. The Store polls every 60 seconds whether or not the window is open.
 
 ## Colors
 
@@ -23,7 +23,7 @@ System font with monospaced digits for every number. The total is 26pt rounded s
 
 ## Layout
 
-420pt wide, 16pt padding. The header has the total, today plus tokens, and a 150×34 daily chart with a refresh button. Each provider section has a header row carrying its column labels (`5h`, `Week`, `Fable`, `Cloud`, `30 days`), so meters show only the percentage, a 4pt capsule, and the reset time. Columns are the union of window ids within a provider, so meters line up across accounts. Identity column is 118pt. Active accounts sort above disabled ones.
+420pt wide, 16pt padding. The header has the total, today plus tokens, and a 150×34 daily chart with a refresh button. Each provider section has a header row carrying its column labels (`5h`, `Week`, `30 days`; Claude's Fable and Cloud windows are hidden), so meters show only the percentage, a 4pt capsule, and the reset time. Columns are the union of window ids within a provider, so meters line up across accounts. Identity column is 118pt. Active accounts sort above disabled ones.
 
 ## Content rules
 

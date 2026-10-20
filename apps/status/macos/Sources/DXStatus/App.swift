@@ -107,7 +107,7 @@ struct ProviderSection: View {
     /// Union of window ids in first-seen order, so meters line up across accounts.
     var slots: [String] {
         var seen: [String] = []
-        for quota in accounts.flatMap(\.windows) where !seen.contains(quota.id) { seen.append(quota.id) }
+        for quota in accounts.flatMap(\.shownWindows) where !seen.contains(quota.id) { seen.append(quota.id) }
         return seen
     }
     func column(_ label: String) -> some View {
@@ -122,7 +122,7 @@ struct ProviderSection: View {
                     Text("\(accounts.count)").font(.caption).foregroundStyle(.tertiary)
                 }.frame(width: 118, alignment: .leading)
                 HStack(spacing: 10) {
-                    ForEach(slots, id: \.self) { slot in column(accounts.flatMap(\.windows).first { $0.id == slot }?.shortLabel ?? slot) }
+                    ForEach(slots, id: \.self) { slot in column(accounts.flatMap(\.shownWindows).first { $0.id == slot }?.shortLabel ?? slot) }
                     if accounts.contains(where: { $0.cursorUsage != nil }) { column("30 days") }
                 }
             }
@@ -150,7 +150,7 @@ struct AccountRow: View {
             }.frame(width: 118, alignment: .leading)
             HStack(alignment: .top, spacing: 10) {
                 ForEach(slots, id: \.self) { slot in
-                    if let quota = account.windows.first(where: { $0.id == slot }) {
+                    if let quota = account.shownWindows.first(where: { $0.id == slot }) {
                         Meter(quota: quota, accent: accent)
                     } else {
                         Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
