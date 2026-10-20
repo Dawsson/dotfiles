@@ -16,13 +16,13 @@ import SwiftUI
 
 /// Best remaining headroom per provider: the most-available active account's tightest window.
 struct Headroom: Identifiable {
-    let id, short: String
+    let id, name: String
     let fraction: Double
     static func from(_ accounts: [Account]) -> [Headroom] {
-        [("claude", "CL"), ("codex", "GPT"), ("xai", "GRK")].compactMap { provider, short in
+        [("claude", "Claude"), ("codex", "Codex"), ("xai", "Grok")].compactMap { provider, name in
             let best = accounts.filter { $0.provider == provider && !$0.unavailable && !$0.windows.isEmpty }
                 .map { $0.windows.map(\.fraction).min() ?? 0 }.max()
-            return best.map { Headroom(id: provider, short: short, fraction: $0) }
+            return best.map { Headroom(id: provider, name: name, fraction: $0) }
         }
     }
 }
@@ -34,18 +34,15 @@ struct MenuBarLabel: View {
         if items.isEmpty {
             Image(systemName: "gauge.with.dots.needle.33percent")
         } else {
-            Image(nsImage: render(items)).accessibilityLabel(items.map { "\($0.short) \(Int(($0.fraction * 100).rounded())) percent" }.joined(separator: ", "))
+            Image(nsImage: render(items)).accessibilityLabel(items.map { "\($0.name) \(Int(($0.fraction * 100).rounded())) percent" }.joined(separator: ", "))
         }
     }
     @MainActor func render(_ items: [Headroom]) -> NSImage {
-        let view = HStack(spacing: 7) {
+        let view = HStack(spacing: 8) {
             ForEach(items) { item in
-                VStack(alignment: .leading, spacing: 1) {
-                    HStack(spacing: 2) {
-                        Text(item.short).font(.system(size: 7.5, weight: .bold)).opacity(0.75)
-                        if item.fraction <= 0.1 { Circle().frame(width: 3, height: 3) }
-                    }
-                    Text("\(Int((item.fraction * 100).rounded()))%").font(.system(size: 10.5, weight: .semibold)).monospacedDigit()
+                HStack(spacing: 3) {
+                    if let logo = Logo.image(item.id, size: 14) { Image(nsImage: logo).resizable().frame(width: 14, height: 14) }
+                    Text("\(Int((item.fraction * 100).rounded()))%").font(.system(size: 13, weight: .semibold)).monospacedDigit()
                 }
             }
         }.foregroundStyle(.black).frame(height: 22)
@@ -133,7 +130,7 @@ struct ProviderSection: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 HStack(spacing: 6) {
-                    RoundedRectangle(cornerRadius: 2).fill(accent).frame(width: 8, height: 8)
+                    if let provider = accounts.first?.provider { LogoView(provider: provider, size: 13) }
                     Text(title).font(.system(size: 12, weight: .semibold))
                     Text("\(accounts.count)").font(.caption).foregroundStyle(.tertiary)
                 }.frame(width: 118, alignment: .leading)
