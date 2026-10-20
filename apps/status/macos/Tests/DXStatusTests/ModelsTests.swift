@@ -12,7 +12,8 @@ func XCTAssertNil<T>(_ a: T?) { precondition(a == nil) }
         try tests.testMissingPlanAndDisabledAccountPreserved()
         try tests.testCursorUsageCountsTowardTotal()
         try tests.testHeadroomPoolsWeeklyAcrossAllAccounts()
-        print("5 model checks passed")
+        try tests.testForecastAndStaleness()
+        print("6 model checks passed")
     }
     func testQuotaClampingAndMissingReset() throws {
         let quota = try JSONDecoder().decode(Quota.self, from: Data(#"{"id":"week","label":"Weekly","remaining":-0.2,"cap":1,"resetAt":null}"#.utf8))
@@ -54,5 +55,23 @@ func XCTAssertNil<T>(_ a: T?) { precondition(a == nil) }
         XCTAssertTrue(abs(headroom[0].fraction - 0.8) < 1e-9)
         XCTAssertEqual(accounts[0].shownWindows.map(\.label), ["5-hour limit", "7-day limit"])
         XCTAssertEqual(accounts[1].shownWindows.map(\.label), ["7-day limit"])
+    }
+    func testForecastAndStaleness() throws {
+        let now = instant("2026-10-20T12:00:00Z")!
+        func sample(_ at: String, _ percent: Double) -> Sample {
+            try! JSONDecoder().decode(Sample.self, from: Data(#"{"at":"2026-10-20T\#(at):00Z","authIndex":"a","windowId":"w","remainingPercent":\#(percent)}"#.utf8))
+        }
+        // Refill at 09:00 is ignored; 10% drained per hour since then, 20% left -> out in 2h, before a reset in 3h.
+        let history = [sample("08:00", 5), sample("09:00", 50), sample("10:00", 40), sample("11:00", 30)]
+        let quota = try JSONDecoder().decode(Quota.self, from: Data(#"{"id":"w","label":"7-day limit","remaining":0.2,"cap":1,"resetAt":"2026-10-20T15:00:00Z"}"#.utf8))
+        XCTAssertEqual(runsOut(quota, authIndex: "a", history: history, now: now), instant("2026-10-20T14:00:00Z"))
+        let lasts = try JSONDecoder().decode(Quota.self, from: Data(#"{"id":"w","label":"7-day limit","remaining":0.2,"cap":1,"resetAt":"2026-10-20T13:00:00Z"}"#.utf8))
+        XCTAssertNil(runsOut(lasts, authIndex: "a", history: history, now: now))
+        XCTAssertNil(runsOut(quota, authIndex: "other", history: history, now: now))
+        XCTAssertEqual(shortDuration(7 * 3600 + 41 * 60), "7h 41m")
+        XCTAssertTrue(isStale(observedAt: "2026-10-20T11:40:00Z", now: now))
+        XCTAssertFalse(isStale(observedAt: "2026-10-20T11:58:00Z", now: now))
+        let credits = try JSONDecoder().decode(ResetCredits.self, from: Data(#"{"available":2,"credits":[{"status":"used","expiresAt":"2026-10-21T00:00:00Z"},{"status":"available","expiresAt":"2026-10-29T00:00:00Z"},{"status":"available","expiresAt":"2026-10-22T00:00:00Z"}]}"#.utf8))
+        XCTAssertEqual(credits.nextExpiry, instant("2026-10-22T00:00:00Z"))
     }
 }

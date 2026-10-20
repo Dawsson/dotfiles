@@ -4,6 +4,11 @@ struct Dashboard: Decodable {
     let observedAt: String
     let credentials: [Account]
     let errors: [String]
+    let history: [Sample]?
+}
+struct Sample: Decodable {
+    let at, authIndex, windowId: String
+    let remainingPercent: Double
 }
 struct Account: Decodable, Identifiable {
     var id: String { authIndex }
@@ -115,4 +120,40 @@ struct Headroom: Identifiable {
             return Headroom(id: provider, name: name, fraction: remaining / weekly.map(\.cap).reduce(0, +))
         }
     }
+}
+struct ResetCredits: Decodable {
+    struct Credit: Decodable { let status: String; let expiresAt: String? }
+    let available: Int
+    let credits: [Credit]
+    /// Earliest expiry among resets that can still be spent.
+    var nextExpiry: Date? { credits.filter { $0.status == "available" }.compactMap { $0.expiresAt.flatMap(instant) }.min() }
+}
+/// Short duration such as "3d", "7h 41m" or "12m".
+func shortDuration(_ seconds: TimeInterval) -> String {
+    let s = max(60, Int(seconds)), minutes = s / 60, hours = s / 3600, days = s / 86400
+    if days > 0 { return "\(days)d" }
+    if hours > 0 { return minutes % 60 > 0 ? "\(hours)h \(minutes % 60)m" : "\(hours)h" }
+    return "\(minutes)m"
+}
+/// When a window runs dry at its recent drain rate, if that comes before its reset.
+/// Uses the last 6 hours of samples after the most recent refill; nil when the window is not draining.
+func runsOut(_ quota: Quota, authIndex: String, history: [Sample], now: Date = Date()) -> Date? {
+    var points = history.filter { $0.authIndex == authIndex && $0.windowId == quota.id }
+        .compactMap { sample in instant(sample.at).map { ($0, sample.remainingPercent) } }
+        .filter { now.timeIntervalSince($0.0) <= 6 * 3600 }
+        .sorted { $0.0 < $1.0 }
+    if let refill = points.indices.dropFirst().last(where: { points[$0].1 > points[$0 - 1].1 + 1 }) {
+        points = Array(points[refill...])
+    }
+    guard let first = points.first, let last = points.last, last.0.timeIntervalSince(first.0) >= 1800 else { return nil }
+    let rate = (first.1 - last.1) / last.0.timeIntervalSince(first.0)
+    guard rate > 0 else { return nil }
+    let out = now.addingTimeInterval(quota.fraction * 100 / rate)
+    if let reset = quota.resetAt.flatMap(instant), out >= reset { return nil }
+    return out
+}
+/// Data older than ten minutes is stale; the proxy normally refreshes every minute.
+func isStale(observedAt: String?, now: Date = Date()) -> Bool {
+    guard let date = observedAt.flatMap(instant) else { return true }
+    return now.timeIntervalSince(date) > 600
 }
