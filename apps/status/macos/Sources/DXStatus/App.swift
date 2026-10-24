@@ -83,7 +83,7 @@ struct StatusView: View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Proxy usage · Lifetime").font(.caption).foregroundStyle(.secondary)
-                Text(store.costs.map { ($0.complete ? "" : "≥") + money($0.total) } ?? "—")
+                Text(store.costs.map { money($0.total) } ?? "—")
                     .font(.system(size: 26, weight: .semibold, design: .rounded)).monospacedDigit()
                     .contentTransition(.numericText())
                 HStack(spacing: 4) {
