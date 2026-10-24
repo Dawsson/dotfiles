@@ -23,14 +23,14 @@ System font with monospaced digits for every number. The total is 26pt rounded s
 
 ## Layout
 
-420pt wide, 16pt padding. The header has the total, today plus tokens, and a 150×34 daily chart with a refresh button. Each provider section has a header row carrying its column labels (`5h`, `Week`, `30 days`, `Resets`; Claude's Fable and Cloud windows are hidden), so meters show only the percentage, a 4pt capsule, and the reset time. Columns are the union of window ids within a provider, so meters line up across accounts. Identity column is 118pt. Active accounts sort above disabled ones.
+420pt wide, 16pt padding. The header has the total, today plus lifetime tokens, a token breakdown popover, and a 150×34 chart of the most recent 30 recorded days with a refresh button. Each provider section has a header row carrying its column labels (`5h`, `Week`, `30 days`, `Resets`; Claude's Fable and Cloud windows are hidden), so meters show only the percentage, a 4pt capsule, and the reset time. Columns are the union of window ids within a provider, so meters line up across accounts. Identity column is 118pt. Active accounts sort above disabled ones.
 
 ## Content rules
 
-- The total counts proxy spending plus Cursor-priced account usage (`cursorUsage`), with no lower-bound prefix and no billing caveats. Unpriced models are left out.
+- The header shows lifetime proxy spending only, from Devbox’s permanent daily history. Cursor’s separate 30-day account usage stays in its account row and is never added to lifetime totals. Incomplete estimates use ≥. Token breakdown opens a compact popover with exact input, cache read/write, output, reasoning and request counts and the recorded start date.
 - Hide noise: no "Plan not reported", no prepaid or on-demand rows, no model breakdown. Show a plan only when one is reported.
 - Emails are shortened (`tim…@gmail.com`); the full address is in the tooltip.
 - Keep accessibility labels on refresh, meters, the chart, and the menu bar label.
-- A meter replaces its reset time with an orange "Out in X" when the recent drain (last 6 hours of `history`, after the latest refill) would empty it before the reset.
+- A meter keeps its reset time and adds “Lasts until reset” or orange “Runs out in X” below it. The pace tick marks expected remaining quota when consumption is spread evenly through the window: white if it lasts, red if it runs out first. Forecasts match Devbox’s average-since-reset calculation and short-window suppression. Unknown or expired reset windows have no forecast.
 - Codex accounts get a `Resets` column: banked resets from `/cpa/reset-credits` (fetched every 10 minutes) and the next expiry, orange under 3 days. Read-only; spending a reset stays in the dashboard.
 - The app registers itself as a login item on first launch; the footer checkbox turns it off.

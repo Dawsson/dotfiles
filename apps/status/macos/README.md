@@ -8,7 +8,7 @@ Native SwiftUI menu bar app, backed by CLI Proxy API through Devbox. Uses the ex
 
 Installs and opens `~/Applications/DX Status.app`. Requires macOS 14+ and Swift 6. It does not replace CodexBar or change login items.
 
-The overview includes 30-day API-rate spending estimates, today's usage, tokens, requests, daily bars and per-model spending. Accounts show all proxy-reported quota windows, resets, status, plan and billing metadata, plus Cursor usage when supplied. Provider filters preserve disabled accounts.
+The overview shows lifetime proxy API-rate estimates from Devbox's persistent history, today's proxy usage, and a token breakdown popover with cache reads/writes and reasoning. The chart shows the latest 30 recorded days. Cursor's separate 30-day account usage remains in the account row and is excluded from the lifetime total. Quota meters show the same expected-remaining tick and average-since-reset forecast as the dashboard: red when projected to run out, white when lasting until reset. Accounts show all proxy-reported quota windows, resets, status, plan and billing metadata, plus Cursor usage when supplied. Provider filters preserve disabled accounts.
 
 The proxy currently omits Claude/Codex plan metadata from its dashboard response. These display “Plan not reported”; no plan is guessed from filenames. Spending is shared proxy traffic, not per-account subscription spend. Unpriced models remain unpriced and incomplete totals use ≥. Previously fetched data stays visible on network failure with an error notice.
 

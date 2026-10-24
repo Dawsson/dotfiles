@@ -3,6 +3,7 @@ import SwiftUI
 
 @MainActor final class Store: ObservableObject {
     @Published var filter = "All"
+    @Published var showTokens = false
     @Published var dashboard: Dashboard?
     @Published var costs: Costs?
     @Published var loading = false
@@ -52,7 +53,7 @@ import SwiftUI
                 resets[account.authIndex] = try? await request("/reset-credits?authIndex=" + account.authIndex, as: ResetCredits.self)
             }
         }
-        do { costs = try await request("/costs?days=30", as: Costs.self); costError = nil }
+        do { costs = try await request("/costs?days=lifetime", as: Costs.self); costError = nil }
         catch { costError = message(error) }
     }
     private func message(_ error: Error) -> String {

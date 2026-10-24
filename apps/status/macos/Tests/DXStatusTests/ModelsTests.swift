@@ -10,7 +10,7 @@ func XCTAssertNil<T>(_ a: T?) { precondition(a == nil) }
         try tests.testQuotaClampingAndMissingReset()
         try tests.testUnknownCostIsNotZeroOrComplete()
         try tests.testMissingPlanAndDisabledAccountPreserved()
-        try tests.testCursorUsageCountsTowardTotal()
+        try tests.testProxyTotalsExcludeCursorUsage()
         try tests.testHeadroomPoolsWeeklyAcrossAllAccounts()
         try tests.testForecastAndStaleness()
         print("6 model checks passed")
@@ -34,11 +34,11 @@ func XCTAssertNil<T>(_ a: T?) { precondition(a == nil) }
         XCTAssertTrue(account.unavailable)
         XCTAssertEqual(account.title, "Codex")
     }
-    func testCursorUsageCountsTowardTotal() throws {
+    func testProxyTotalsExcludeCursorUsage() throws {
         let account = try JSONDecoder().decode(Account.self, from: Data(#"{"authIndex":"x","name":"x.json","provider":"xai","email":"hello@dawson.gg","status":"active","unavailable":false,"windows":[],"cursorUsage":{"today":{"costUsd":1.5,"tokens":10},"last30Days":{"costUsd":100,"tokens":1000},"error":null}}"#.utf8))
         let costs = try JSONDecoder().decode(Costs.self, from: Data(#"{"observedAt":"2026-10-20T00:00:00Z","timezone":"UTC","complete":false,"stale":false,"models":[{"model":"priced","tokens":20,"requests":1,"estimatedUsd":2.5,"complete":true}],"daily":[]}"#.utf8))
-        XCTAssertEqual(usageTotal(costs, [account]), 102.5)
-        XCTAssertEqual(usageToday(costs, [account]), 1.5)
+        XCTAssertEqual(costs.total, 2.5)
+        XCTAssertEqual(account.cursorCost, 100)
         XCTAssertEqual(account.shortEmail, "hel…@dawson.gg")
     }
     func testHeadroomPoolsWeeklyAcrossAllAccounts() throws {
@@ -58,16 +58,25 @@ func XCTAssertNil<T>(_ a: T?) { precondition(a == nil) }
     }
     func testForecastAndStaleness() throws {
         let now = instant("2026-10-20T12:00:00Z")!
-        func sample(_ at: String, _ percent: Double) -> Sample {
-            try! JSONDecoder().decode(Sample.self, from: Data(#"{"at":"2026-10-20T\#(at):00Z","authIndex":"a","windowId":"w","remainingPercent":\#(percent)}"#.utf8))
+        func quota(_ remaining: Double, _ reset: String?, label: String = "7-day limit") -> Quota {
+            Quota(id: "w", label: label, remaining: remaining, cap: 1, resetAt: reset)
         }
-        // Refill at 09:00 is ignored; 10% drained per hour since then, 20% left -> out in 2h, before a reset in 3h.
-        let history = [sample("08:00", 5), sample("09:00", 50), sample("10:00", 40), sample("11:00", 30)]
-        let quota = try JSONDecoder().decode(Quota.self, from: Data(#"{"id":"w","label":"7-day limit","remaining":0.2,"cap":1,"resetAt":"2026-10-20T15:00:00Z"}"#.utf8))
-        XCTAssertEqual(runsOut(quota, authIndex: "a", history: history, now: now), instant("2026-10-20T14:00:00Z"))
-        let lasts = try JSONDecoder().decode(Quota.self, from: Data(#"{"id":"w","label":"7-day limit","remaining":0.2,"cap":1,"resetAt":"2026-10-20T13:00:00Z"}"#.utf8))
-        XCTAssertNil(runsOut(lasts, authIndex: "a", history: history, now: now))
-        XCTAssertNil(runsOut(quota, authIndex: "other", history: history, now: now))
+        // One day into a week: 35% spent exceeds the expected 14.3%.
+        let fast = usagePace(quota(0.65, "2026-10-26T12:00:00Z"), now: now)!
+        XCTAssertTrue(abs(fast.expectedRemaining - 6.0 / 7) < 1e-9)
+        XCTAssertFalse(fast.lastsUntilReset)
+        XCTAssertEqual(fast.outlook, "Runs out in 1d 20h")
+        XCTAssertEqual(fast.balance, "21% in deficit")
+        let slow = usagePace(quota(0.92, "2026-10-26T12:00:00Z"), now: now)!
+        XCTAssertTrue(slow.lastsUntilReset)
+        XCTAssertNil(slow.eta)
+        XCTAssertEqual(slow.outlook, "Lasts until reset")
+        XCTAssertNil(usagePace(quota(0.5, nil), now: now))
+        XCTAssertNil(usagePace(quota(0.5, "2026-10-20T11:00:00Z"), now: now))
+        XCTAssertNil(usagePace(quota(0.5, "2026-10-28T12:00:00Z"), now: now))
+        XCTAssertNil(usagePace(quota(0.5, "2026-10-26T12:00:00Z", label: "Unknown"), now: now))
+        XCTAssertFalse(usagePace(quota(1, "2026-10-20T16:59:00Z", label: "5-hour limit"), now: now)!.showOutlook)
+        XCTAssertEqual(usagePace(quota(0, "2026-10-26T12:00:00Z"), now: now)!.outlook, "Runs out now")
         XCTAssertEqual(shortDuration(7 * 3600 + 41 * 60), "7h 41m")
         XCTAssertTrue(isStale(observedAt: "2026-10-20T11:40:00Z", now: now))
         XCTAssertFalse(isStale(observedAt: "2026-10-20T11:58:00Z", now: now))

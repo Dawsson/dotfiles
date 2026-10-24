@@ -38,6 +38,7 @@ struct Quota: Decodable, Identifiable {
 }
 struct Costs: Decodable {
     let observedAt, timezone: String
+    let start: String?
     let complete, stale: Bool
     let models: [ModelCost]
     let daily: [DayCost]
@@ -53,6 +54,7 @@ struct ModelCost: Decodable, Identifiable {
     var id: String { model }
     let model: String
     let tokens, requests: Double
+    let input, cached, cacheWrite, output, reasoning: Double?
     let estimatedUsd: Double?
     let complete: Bool
 }
@@ -92,13 +94,6 @@ extension Quota {
     }
     var percent: String { "\(Int((fraction * 100).rounded()))%" }
 }
-/// Proxy spending plus usage that Cursor-priced accounts report directly.
-func usageTotal(_ costs: Costs?, _ accounts: [Account]) -> Double {
-    (costs?.total ?? 0) + accounts.map(\.cursorCost).reduce(0, +)
-}
-func usageToday(_ costs: Costs?, _ accounts: [Account]) -> Double {
-    (costs?.today?.estimatedUsd ?? 0) + accounts.compactMap { $0.cursorUsage?.today.costUsd }.reduce(0, +)
-}
 func shortReset(_ value: String?) -> String {
     let label = resetLabel(value)
     return label.hasPrefix("Resets in ") ? String(label.dropFirst(10)) : "—"
@@ -135,22 +130,56 @@ func shortDuration(_ seconds: TimeInterval) -> String {
     if hours > 0 { return minutes % 60 > 0 ? "\(hours)h \(minutes % 60)m" : "\(hours)h" }
     return "\(minutes)m"
 }
-/// When a window runs dry at its recent drain rate, if that comes before its reset.
-/// Uses the last 6 hours of samples after the most recent refill; nil when the window is not draining.
-func runsOut(_ quota: Quota, authIndex: String, history: [Sample], now: Date = Date()) -> Date? {
-    var points = history.filter { $0.authIndex == authIndex && $0.windowId == quota.id }
-        .compactMap { sample in instant(sample.at).map { ($0, sample.remainingPercent) } }
-        .filter { now.timeIntervalSince($0.0) <= 6 * 3600 }
-        .sorted { $0.0 < $1.0 }
-    if let refill = points.indices.dropFirst().last(where: { points[$0].1 > points[$0 - 1].1 + 1 }) {
-        points = Array(points[refill...])
+/// Matches Devbox's usage-pace.ts: average consumption since the window began.
+struct UsagePace {
+    let expectedRemaining: Double
+    let deltaPercent: Double
+    let eta: TimeInterval?
+    let lastsUntilReset: Bool
+    let showOutlook: Bool
+    var balance: String {
+        let points = Int(abs(deltaPercent).rounded())
+        if abs(deltaPercent) <= 2 { return "On pace" }
+        return "\(points)% in " + (deltaPercent > 0 ? "deficit" : "reserve")
     }
-    guard let first = points.first, let last = points.last, last.0.timeIntervalSince(first.0) >= 1800 else { return nil }
-    let rate = (first.1 - last.1) / last.0.timeIntervalSince(first.0)
-    guard rate > 0 else { return nil }
-    let out = now.addingTimeInterval(quota.fraction * 100 / rate)
-    if let reset = quota.resetAt.flatMap(instant), out >= reset { return nil }
-    return out
+    var outlook: String {
+        if lastsUntilReset { return "Lasts until reset" }
+        guard let eta else { return "" }
+        let minutes = Int((eta / 60).rounded())
+        if minutes <= 0 { return "Runs out now" }
+        let days = minutes / 1440, hours = minutes % 1440 / 60
+        let duration: String
+        if days > 0 { duration = hours > 0 ? "\(days)d \(hours)h" : "\(days)d" }
+        else if hours > 0 { duration = minutes % 60 > 0 ? "\(hours)h \(minutes % 60)m" : "\(hours)h" }
+        else { duration = "\(minutes)m" }
+        return "Runs out in " + duration
+    }
+}
+func usagePace(_ quota: Quota, now: Date = Date()) -> UsagePace? {
+    let label = quota.label.lowercased()
+    let hours: Double
+    if label.range(of: #"\b5-?hour|\b5h\b"#, options: .regularExpression) != nil { hours = 5 }
+    else if label.range(of: #"7-?day|weekly|\bweek\b"#, options: .regularExpression) != nil { hours = 168 }
+    else if label.range(of: #"daily|24-?hour|\bday\b"#, options: .regularExpression) != nil { hours = 24 }
+    else if label.contains("month") { hours = 720 }
+    else { return nil }
+    guard quota.cap > 0, quota.cap.isFinite, quota.remaining.isFinite,
+          let reset = quota.resetAt.flatMap(instant) else { return nil }
+    let duration = hours * 3600, untilReset = reset.timeIntervalSince(now)
+    guard untilReset > 0, untilReset <= duration else { return nil }
+    let elapsed = duration - untilReset, actual = (1 - quota.fraction) * 100
+    guard elapsed > 0 || actual == 0 else { return nil }
+    let expected = elapsed / duration * 100
+    var eta: TimeInterval? = nil
+    var lasts = false
+    if actual >= 100 { eta = 0 }
+    else if elapsed > 0 && actual > 0 {
+        let candidate = (100 - actual) / (actual / elapsed)
+        if candidate >= untilReset { lasts = true } else { eta = candidate }
+    } else if elapsed > 0 { lasts = true }
+    return UsagePace(expectedRemaining: 1 - expected / 100, deltaPercent: actual - expected,
+                     eta: eta, lastsUntilReset: lasts,
+                     showOutlook: hours > 5 || (actual < 100 && expected >= 3))
 }
 /// Data older than ten minutes is stale; the proxy normally refreshes every minute.
 func isStale(observedAt: String?, now: Date = Date()) -> Bool {
