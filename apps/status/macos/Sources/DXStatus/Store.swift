@@ -6,7 +6,7 @@ import SwiftUI
     @Published var showTokens = false
     @Published var dashboard: Dashboard?
     @Published var costs: Costs?
-    @Published var tokenRate = TokenRate()
+    @Published var tokenRate = TokenRate(peak: UserDefaults.standard.object(forKey: "proxyPeakTokensPerMinute") as? Double)
     @Published var loading = false
     @Published var error: String?
     @Published var costError: String?
@@ -58,7 +58,11 @@ import SwiftUI
             let fresh = try await request("/costs?days=lifetime", as: Costs.self)
             costs = fresh; costError = nil
             if !fresh.stale, let at = instant(fresh.observedAt) {
+                let previousPeak = tokenRate.peak
                 tokenRate.record(tokens: fresh.tokens, at: at)
+                if let peak = tokenRate.peak, peak != previousPeak {
+                    UserDefaults.standard.set(peak, forKey: "proxyPeakTokensPerMinute")
+                }
             } else { tokenRate.reset() }
         } catch { costError = message(error); tokenRate.reset() }
     }

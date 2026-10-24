@@ -191,6 +191,10 @@ func isStale(observedAt: String?, now: Date = Date()) -> Bool {
 struct TokenRate {
     private var previous: (tokens: Double, at: Date)?
     private(set) var perMinute: Double?
+    private(set) var peak: Double?
+    init(peak: Double? = nil) {
+        self.peak = peak.flatMap { $0.isFinite && $0 >= 0 ? $0 : nil }
+    }
     mutating func record(tokens: Double, at: Date, now: Date = Date()) {
         guard tokens.isFinite, tokens >= 0, now.timeIntervalSince(at) >= -5,
               now.timeIntervalSince(at) <= 90 else { reset(); return }
@@ -200,6 +204,7 @@ struct TokenRate {
             perMinute = elapsed >= 45 && elapsed <= 90 && tokens >= previous.tokens
                 ? (tokens - previous.tokens) * 60 / elapsed : nil
         }
+        if let perMinute { peak = max(peak ?? 0, perMinute) }
         previous = (tokens, at)
     }
     mutating func reset() { previous = nil; perMinute = nil }

@@ -24,13 +24,20 @@ func XCTAssertNil<T>(_ a: T?) { precondition(a == nil) }
             rate.record(tokens: tokens, at: at, now: at)
         }
         record(1000, 0); XCTAssertNil(rate.perMinute)
-        record(1600, 60); XCTAssertEqual(rate.perMinute, 600)
-        record(1600, 60); XCTAssertEqual(rate.perMinute, 600)
+        record(1600, 60); XCTAssertEqual(rate.perMinute, 600); XCTAssertEqual(rate.peak, 600)
+        record(1600, 60); XCTAssertEqual(rate.perMinute, 600); XCTAssertEqual(rate.peak, 600)
         record(1600, 120); XCTAssertEqual(rate.perMinute, 0)
         record(2000, 3720); XCTAssertNil(rate.perMinute) // Never average an hour away.
         record(2700, 3790); XCTAssertEqual(rate.perMinute, 600)
         record(100, 3850); XCTAssertNil(rate.perMinute) // Corrected history.
         rate.reset(); record(1000, 3910); XCTAssertNil(rate.perMinute)
+        XCTAssertEqual(rate.peak, 600)
+        var restored = TokenRate(peak: rate.peak)
+        restored.record(tokens: 1000, at: start, now: start)
+        restored.record(tokens: 1300, at: start.addingTimeInterval(60), now: start.addingTimeInterval(60))
+        XCTAssertEqual(restored.peak, 600)
+        restored.record(tokens: 2200, at: start.addingTimeInterval(120), now: start.addingTimeInterval(120))
+        XCTAssertEqual(restored.peak, 900)
         rate.record(tokens: 2000, at: start, now: start.addingTimeInterval(120))
         XCTAssertNil(rate.perMinute)
     }

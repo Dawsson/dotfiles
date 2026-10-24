@@ -97,7 +97,7 @@ struct StatusView: View {
                 if let costs = store.costs {
                     Button("Token breakdown") { store.showTokens.toggle() }
                         .buttonStyle(MenuButtonStyle()).font(.caption).foregroundStyle(.secondary)
-                        .popover(isPresented: $store.showTokens) { TokenBreakdown(costs: costs) }
+                        .popover(isPresented: $store.showTokens) { TokenBreakdown(costs: costs, peakTokensPerMinute: store.tokenRate.peak) }
                 }
                 if let observed = store.dashboard?.observedAt, isStale(observedAt: observed), let date = instant(observed) {
                     Text("Quotas from \(shortDuration(Date().timeIntervalSince(date))) ago").font(.caption).foregroundStyle(.orange)
@@ -249,6 +249,7 @@ struct Meter: View {
 
 struct TokenBreakdown: View {
     let costs: Costs
+    let peakTokensPerMinute: Double?
     func sum(_ key: KeyPath<ModelCost, Double?>) -> Double { costs.models.compactMap { $0[keyPath: key] }.reduce(0, +) }
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -262,6 +263,11 @@ struct TokenBreakdown: View {
                 row("Output", sum(\.output))
                 row("Reasoning, included in output", sum(\.reasoning))
                 row("Requests", costs.requests)
+                GridRow {
+                    Text("Peak tokens/min")
+                    Text(peakTokensPerMinute.map { $0.formatted(.number.precision(.fractionLength(0))) } ?? "Measuring…")
+                        .monospacedDigit()
+                }.help("Highest minute observed by this Mac, saved across app restarts.")
             }
             Text(costs.complete ? "API-equivalent estimate" : "Partial API estimate; some usage has no price")
                 .font(.caption).foregroundStyle(.secondary)
