@@ -74,7 +74,7 @@ struct StatusView: View {
                 Spacer()
                 Toggle("Open at login", isOn: Binding(get: { login.enabled }, set: { login.set($0) }))
                     .toggleStyle(.checkbox).controlSize(.small)
-                Button("Quit") { NSApplication.shared.terminate(nil) }.buttonStyle(.borderless)
+                Button("Quit") { NSApplication.shared.terminate(nil) }.buttonStyle(MenuButtonStyle())
             }.font(.caption).foregroundStyle(.secondary).padding(.horizontal, 16).padding(.vertical, 10)
         }.frame(width: 420)
             .focusEffectDisabled()
@@ -91,12 +91,12 @@ struct StatusView: View {
                     Text("Today " + (store.costs.map { money($0.today?.estimatedUsd ?? 0) } ?? "—"))
                     if let costs = store.costs { Text("· " + compact(costs.tokens) + " tokens") }
                 }.font(.caption).foregroundStyle(.secondary).monospacedDigit()
-                Text(store.tokenRate.perMinute.map { compact($0) + " tokens/min" } ?? "— tokens/min")
+                Text(store.tokenRate.perMinute.map { compact($0) + " tokens/min" } ?? "Measuring tokens/min…")
                     .font(.caption).foregroundStyle(.secondary).monospacedDigit()
                     .help("Estimated from usage recorded over the latest minute. Available after two fresh updates.")
                 if let costs = store.costs {
                     Button("Token breakdown") { store.showTokens.toggle() }
-                        .buttonStyle(.borderless).font(.caption).foregroundStyle(.secondary)
+                        .buttonStyle(MenuButtonStyle()).font(.caption).foregroundStyle(.secondary)
                         .popover(isPresented: $store.showTokens) { TokenBreakdown(costs: costs) }
                 }
                 if let observed = store.dashboard?.observedAt, isStale(observedAt: observed), let date = instant(observed) {
@@ -107,7 +107,7 @@ struct StatusView: View {
             VStack(alignment: .trailing, spacing: 6) {
                 Button { Task { await store.refresh() } } label: {
                     if store.loading { ProgressView().controlSize(.mini) } else { Image(systemName: "arrow.clockwise") }
-                }.buttonStyle(.borderless).frame(width: 16, height: 16)
+                }.buttonStyle(MenuButtonStyle()).frame(width: 16, height: 16)
                     .help("Refresh").accessibilityLabel("Refresh").disabled(store.loading)
                 if let costs = store.costs, !costs.daily.isEmpty {
                     Chart(Array(costs.daily.suffix(30))) { day in
@@ -285,5 +285,12 @@ struct TokenBreakdown: View {
     func set(_ on: Bool) {
         try? on ? SMAppService.mainApp.register() : SMAppService.mainApp.unregister()
         enabled = SMAppService.mainApp.status == .enabled
+    }
+}
+
+/// SwiftUI rendering avoids AppKit's automatic first-button focus ring.
+struct MenuButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.opacity(configuration.isPressed ? 0.6 : 1)
     }
 }
