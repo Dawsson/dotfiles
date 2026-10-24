@@ -186,3 +186,21 @@ func isStale(observedAt: String?, now: Date = Date()) -> Bool {
     guard let date = observedAt.flatMap(instant) else { return true }
     return now.timeIntervalSince(date) > 600
 }
+
+/// Rate between fresh proxy snapshots, limited to roughly the last minute.
+struct TokenRate {
+    private var previous: (tokens: Double, at: Date)?
+    private(set) var perMinute: Double?
+    mutating func record(tokens: Double, at: Date, now: Date = Date()) {
+        guard tokens.isFinite, tokens >= 0, now.timeIntervalSince(at) >= -5,
+              now.timeIntervalSince(at) <= 90 else { reset(); return }
+        if let previous {
+            let elapsed = at.timeIntervalSince(previous.at)
+            guard elapsed > 0 else { return } // Same cached response is not a new sample.
+            perMinute = elapsed >= 45 && elapsed <= 90 && tokens >= previous.tokens
+                ? (tokens - previous.tokens) * 60 / elapsed : nil
+        }
+        previous = (tokens, at)
+    }
+    mutating func reset() { previous = nil; perMinute = nil }
+}

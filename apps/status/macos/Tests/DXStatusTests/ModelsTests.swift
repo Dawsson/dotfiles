@@ -13,7 +13,26 @@ func XCTAssertNil<T>(_ a: T?) { precondition(a == nil) }
         try tests.testProxyTotalsExcludeCursorUsage()
         try tests.testHeadroomPoolsWeeklyAcrossAllAccounts()
         try tests.testForecastAndStaleness()
-        print("6 model checks passed")
+        tests.testRecentTokenRate()
+        print("7 model checks passed")
+    }
+    func testRecentTokenRate() {
+        var rate = TokenRate()
+        let start = Date(timeIntervalSince1970: 1000)
+        func record(_ tokens: Double, _ seconds: Double) {
+            let at = start.addingTimeInterval(seconds)
+            rate.record(tokens: tokens, at: at, now: at)
+        }
+        record(1000, 0); XCTAssertNil(rate.perMinute)
+        record(1600, 60); XCTAssertEqual(rate.perMinute, 600)
+        record(1600, 60); XCTAssertEqual(rate.perMinute, 600)
+        record(1600, 120); XCTAssertEqual(rate.perMinute, 0)
+        record(2000, 3720); XCTAssertNil(rate.perMinute) // Never average an hour away.
+        record(2700, 3790); XCTAssertEqual(rate.perMinute, 600)
+        record(100, 3850); XCTAssertNil(rate.perMinute) // Corrected history.
+        rate.reset(); record(1000, 3910); XCTAssertNil(rate.perMinute)
+        rate.record(tokens: 2000, at: start, now: start.addingTimeInterval(120))
+        XCTAssertNil(rate.perMinute)
     }
     func testQuotaClampingAndMissingReset() throws {
         let quota = try JSONDecoder().decode(Quota.self, from: Data(#"{"id":"week","label":"Weekly","remaining":-0.2,"cap":1,"resetAt":null}"#.utf8))

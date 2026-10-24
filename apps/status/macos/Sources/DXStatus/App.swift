@@ -90,6 +90,9 @@ struct StatusView: View {
                     Text("Today " + (store.costs.map { money($0.today?.estimatedUsd ?? 0) } ?? "—"))
                     if let costs = store.costs { Text("· " + compact(costs.tokens) + " tokens") }
                 }.font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                Text(store.tokenRate.perMinute.map { compact($0) + " tokens/min" } ?? "— tokens/min")
+                    .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                    .help("Estimated from usage recorded over the latest minute. Available after two fresh updates.")
                 if let costs = store.costs {
                     Button("Token breakdown") { store.showTokens.toggle() }
                         .buttonStyle(.borderless).font(.caption).foregroundStyle(.secondary)

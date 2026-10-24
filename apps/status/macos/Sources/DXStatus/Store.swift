@@ -6,6 +6,7 @@ import SwiftUI
     @Published var showTokens = false
     @Published var dashboard: Dashboard?
     @Published var costs: Costs?
+    @Published var tokenRate = TokenRate()
     @Published var loading = false
     @Published var error: String?
     @Published var costError: String?
@@ -53,8 +54,13 @@ import SwiftUI
                 resets[account.authIndex] = try? await request("/reset-credits?authIndex=" + account.authIndex, as: ResetCredits.self)
             }
         }
-        do { costs = try await request("/costs?days=lifetime", as: Costs.self); costError = nil }
-        catch { costError = message(error) }
+        do {
+            let fresh = try await request("/costs?days=lifetime", as: Costs.self)
+            costs = fresh; costError = nil
+            if !fresh.stale, let at = instant(fresh.observedAt) {
+                tokenRate.record(tokens: fresh.tokens, at: at)
+            } else { tokenRate.reset() }
+        } catch { costError = message(error); tokenRate.reset() }
     }
     private func message(_ error: Error) -> String {
         if let e = error as? FetchError { return e.localizedDescription }
