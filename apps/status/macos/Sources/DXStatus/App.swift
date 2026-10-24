@@ -77,6 +77,7 @@ struct StatusView: View {
                 Button("Quit") { NSApplication.shared.terminate(nil) }.buttonStyle(.borderless)
             }.font(.caption).foregroundStyle(.secondary).padding(.horizontal, 16).padding(.vertical, 10)
         }.frame(width: 420)
+            .focusEffectDisabled()
             .task { await store.refresh() }
     }
     var header: some View {
