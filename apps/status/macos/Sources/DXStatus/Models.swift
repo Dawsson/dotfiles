@@ -18,7 +18,7 @@ struct Account: Decodable, Identifiable {
     let windows: [Quota]
     let billing: Billing?
     let cursorUsage: CursorUsage?
-    var title: String { ["codex": "Codex", "claude": "Claude", "xai": "Grok"][provider] ?? provider.capitalized }
+    var title: String { ["codex": "Codex", "claude": "Claude", "xai": "Grok", "opencode": "OpenCode"][provider] ?? provider.capitalized }
     var plan: String { billing?.plan ?? "Plan not reported" }
 }
 struct Billing: Decodable {
@@ -90,7 +90,7 @@ extension Account {
 }
 extension Quota {
     var shortLabel: String {
-        ["5-hour limit": "5h", "7-day limit": "Week", "7-day credits": "Week", "Cloud session credits": "Cloud", "7-day Fable": "Fable"][label] ?? label
+        ["5-hour limit": "5h", "7-day limit": "Week", "7-day credits": "Week", "Cloud session credits": "Cloud", "7-day Fable": "Fable", "Monthly limit": "Month"][label] ?? label
     }
     var percent: String { "\(Int((fraction * 100).rounded()))%" }
 }
@@ -108,7 +108,7 @@ struct Headroom: Identifiable {
     let id, name: String
     let fraction: Double
     static func from(_ accounts: [Account]) -> [Headroom] {
-        [("claude", "Claude"), ("codex", "Codex"), ("xai", "Grok")].compactMap { provider, name in
+        [("claude", "Claude"), ("codex", "Codex"), ("xai", "Grok"), ("opencode", "OpenCode")].compactMap { provider, name in
             let weekly = accounts.filter { $0.provider == provider }.compactMap(\.weekly).filter { $0.cap > 0 && $0.cap.isFinite }
             guard !weekly.isEmpty else { return nil }
             let remaining = weekly.map { min($0.cap, max(0, $0.remaining.isFinite ? $0.remaining : 0)) }.reduce(0, +)

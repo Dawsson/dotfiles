@@ -14,7 +14,16 @@ func XCTAssertNil<T>(_ a: T?) { precondition(a == nil) }
         try tests.testHeadroomPoolsWeeklyAcrossAllAccounts()
         try tests.testForecastAndStaleness()
         tests.testRecentTokenRate()
-        print("7 model checks passed")
+        try tests.testOpenCodeGoUsesItsWeeklyMeter()
+        print("8 model checks passed")
+    }
+    func testOpenCodeGoUsesItsWeeklyMeter() throws {
+        let account = try JSONDecoder().decode(Account.self, from: Data(#"{"authIndex":"oc","name":"OpenCode Go","provider":"opencode","status":"active","unavailable":false,"windows":[{"id":"rolling","label":"5-hour limit","remaining":0.9,"cap":1,"resetAt":null},{"id":"weekly","label":"7-day limit","remaining":0.6,"cap":1,"resetAt":null},{"id":"monthly","label":"Monthly limit","remaining":0.8,"cap":1,"resetAt":null}]}"#.utf8))
+        XCTAssertEqual(account.title, "OpenCode")
+        XCTAssertEqual(account.windows.map(\.shortLabel), ["5h", "Week", "Month"])
+        let headroom = Headroom.from([account])
+        XCTAssertEqual(headroom.map(\.name), ["OpenCode"])
+        XCTAssertTrue(abs(headroom[0].fraction - 0.6) < 1e-9)
     }
     func testRecentTokenRate() {
         var rate = TokenRate()
