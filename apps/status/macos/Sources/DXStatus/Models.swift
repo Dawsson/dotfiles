@@ -18,7 +18,7 @@ struct Account: Decodable, Identifiable {
     let windows: [Quota]
     let billing: Billing?
     let cursorUsage: CursorUsage?
-    var title: String { ["codex": "Codex", "claude": "Claude", "xai": "Grok", "opencode": "OpenCode"][provider] ?? provider.capitalized }
+    var title: String { ["codex": "Codex", "claude": "Claude", "xai": "Grok", "opencode": "OpenCode", "antigravity": "Antigravity"][provider] ?? provider.capitalized }
     var plan: String { billing?.plan ?? "Plan not reported" }
 }
 struct Billing: Decodable {
@@ -90,7 +90,13 @@ extension Account {
 }
 extension Quota {
     var shortLabel: String {
-        ["5-hour limit": "5h", "7-day limit": "Week", "7-day credits": "Week", "Cloud session credits": "Cloud", "7-day Fable": "Fable", "Monthly limit": "Month"][label] ?? label
+        if let short = ["5-hour limit": "5h", "7-day limit": "Week", "7-day credits": "Week", "Cloud session credits": "Cloud", "7-day Fable": "Fable", "Monthly limit": "Month"][label] { return short }
+        // Antigravity names a model group first: "Claude/GPT 5-hour limit" → "Claude 5h".
+        for (suffix, short) in [(" 5-hour limit", "5h"), (" 7-day limit", "wk")] where label.hasSuffix(suffix) {
+            let group = label.dropLast(suffix.count).split(separator: "/").first.map(String.init) ?? ""
+            return "\(group.split(separator: " ").last.map(String.init) ?? group) \(short)"
+        }
+        return label
     }
     var percent: String { "\(Int((fraction * 100).rounded()))%" }
 }
@@ -101,14 +107,15 @@ func shortReset(_ value: String?) -> String {
 extension Account {
     /// Windows worth showing; Claude's Fable and cloud-session credits are noise.
     var shownWindows: [Quota] { windows.filter { !$0.label.contains("Fable") && !$0.label.hasPrefix("Cloud") } }
-    var weekly: Quota? { windows.first { $0.label == "7-day limit" || $0.label == "7-day credits" } }
+    /// Antigravity's weekly headroom is its Gemini pool, the one most of its traffic draws on.
+    var weekly: Quota? { windows.first { ["7-day limit", "7-day credits", "Gemini 7-day limit"].contains($0.label) } }
 }
 /// Combined weekly quota per provider: remaining over cap, pooled across every account, disabled ones included.
 struct Headroom: Identifiable {
     let id, name: String
     let fraction: Double
     static func from(_ accounts: [Account]) -> [Headroom] {
-        [("claude", "Claude"), ("codex", "Codex"), ("xai", "Grok"), ("opencode", "OpenCode")].compactMap { provider, name in
+        [("claude", "Claude"), ("codex", "Codex"), ("xai", "Grok"), ("opencode", "OpenCode"), ("antigravity", "Antigravity")].compactMap { provider, name in
             let weekly = accounts.filter { $0.provider == provider }.compactMap(\.weekly).filter { $0.cap > 0 && $0.cap.isFinite }
             guard !weekly.isEmpty else { return nil }
             let remaining = weekly.map { min($0.cap, max(0, $0.remaining.isFinite ? $0.remaining : 0)) }.reduce(0, +)

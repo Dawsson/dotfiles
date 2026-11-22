@@ -15,7 +15,17 @@ func XCTAssertNil<T>(_ a: T?) { precondition(a == nil) }
         try tests.testForecastAndStaleness()
         tests.testRecentTokenRate()
         try tests.testOpenCodeGoUsesItsWeeklyMeter()
-        print("8 model checks passed")
+        try tests.testAntigravityGroupsShortenAndPoolGemini()
+        print("9 model checks passed")
+    }
+    func testAntigravityGroupsShortenAndPoolGemini() throws {
+        let account = try JSONDecoder().decode(Account.self, from: Data(#"{"authIndex":"ag","name":"antigravity-me.json","provider":"antigravity","status":"active","unavailable":false,"billing":{"plan":"Google AI Pro"},"windows":[{"id":"gemini:weekly","label":"Gemini 7-day limit","remaining":0.97,"cap":1,"resetAt":null},{"id":"gemini:5h","label":"Gemini 5-hour limit","remaining":0.94,"cap":1,"resetAt":null},{"id":"claude-gpt:5h","label":"Claude/GPT 5-hour limit","remaining":1,"cap":1,"resetAt":null},{"id":"gemini-4-argon:weekly","label":"Gemini 4 Argon 7-day limit","remaining":1,"cap":1,"resetAt":null}]}"#.utf8))
+        XCTAssertEqual(account.title, "Antigravity")
+        XCTAssertEqual(account.plan, "Google AI Pro")
+        XCTAssertEqual(account.windows.map(\.shortLabel), ["Gemini wk", "Gemini 5h", "Claude 5h", "Argon wk"])
+        let headroom = Headroom.from([account])
+        XCTAssertEqual(headroom.map(\.name), ["Antigravity"])
+        XCTAssertTrue(abs(headroom[0].fraction - 0.97) < 1e-9)
     }
     func testOpenCodeGoUsesItsWeeklyMeter() throws {
         let account = try JSONDecoder().decode(Account.self, from: Data(#"{"authIndex":"oc","name":"OpenCode Go","provider":"opencode","status":"active","unavailable":false,"windows":[{"id":"rolling","label":"5-hour limit","remaining":0.9,"cap":1,"resetAt":null},{"id":"weekly","label":"7-day limit","remaining":0.6,"cap":1,"resetAt":null},{"id":"monthly","label":"Monthly limit","remaining":0.8,"cap":1,"resetAt":null}]}"#.utf8))

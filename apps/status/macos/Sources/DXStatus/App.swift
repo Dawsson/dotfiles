@@ -129,7 +129,7 @@ struct ProviderSection: View {
     let accounts: [Account]
     let resets: [String: ResetCredits]
     var hasResets: Bool { accounts.contains { resets[$0.authIndex] != nil } }
-    var accent: Color { accounts.first.map { $0.provider == "claude" ? .orange : $0.provider == "codex" ? .teal : $0.provider == "opencode" ? .primary : .purple } ?? .accentColor }
+    var accent: Color { accounts.first.map { $0.provider == "claude" ? .orange : $0.provider == "codex" ? .teal : $0.provider == "opencode" ? .primary : $0.provider == "antigravity" ? .blue : .purple } ?? .accentColor }
     /// Union of window ids in first-seen order, so meters line up across accounts.
     var slots: [String] {
         var seen: [String] = []
